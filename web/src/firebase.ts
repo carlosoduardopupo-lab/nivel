@@ -8,6 +8,24 @@ import { connectStorageEmulator, getStorage } from "firebase/storage";
 export const usaEmuladores = import.meta.env.DEV || import.meta.env.VITE_USAR_EMULADORES === "true";
 
 const env = import.meta.env;
+
+// En Firebase Hosting, la configuración del proyecto se sirve en /__/firebase/init.json,
+// así no hace falta copiarla a mano. Si existe VITE_FIREBASE_API_KEY, se usa esa.
+async function configNube() {
+  if (env.VITE_FIREBASE_API_KEY) {
+    return {
+      apiKey: env.VITE_FIREBASE_API_KEY,
+      authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
+      appId: env.VITE_FIREBASE_APP_ID,
+    };
+  }
+  const r = await fetch("/__/firebase/init.json");
+  if (!r.ok) throw new Error("No se encontró la configuración de Firebase (/__/firebase/init.json).");
+  return r.json();
+}
+
 const config = usaEmuladores
   ? {
       apiKey: "demo-key",
@@ -16,13 +34,7 @@ const config = usaEmuladores
       storageBucket: "demo-nivel.appspot.com",
       appId: "demo-app",
     }
-  : {
-      apiKey: env.VITE_FIREBASE_API_KEY,
-      authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
-      projectId: env.VITE_FIREBASE_PROJECT_ID,
-      storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
-      appId: env.VITE_FIREBASE_APP_ID,
-    };
+  : await configNube();
 
 export const app = initializeApp(config);
 export const auth = getAuth(app);

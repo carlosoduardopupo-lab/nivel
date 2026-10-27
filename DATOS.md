@@ -129,6 +129,9 @@ Lectura: el comprador. Solo Functions (webhook de Stripe, idempotente por id de 
 `{ uid, montoMilesimas, comisionMilesimas, netoMilesimas, stripeTransferId, estado, creadoEn }`.
 Lectura: el dueño. Solo Functions.
 
+## bancoPreguntas/{id}
+`{ texto, opciones: string[3], correcta: 0, activa, aleatorio }`. Preguntas generales cargadas con `npm run banco` desde `functions/scripts/banco.json`. Nadie las lee desde el cliente. Por ahora el juego publicado no las usa.
+
 ## reels/{reelId}
 Lectura: registrados si `estado == "publicado"`; el autor siempre. Escritura: solo Functions (`crearReel`, `editarReel`, `eliminarReel`, `meGustaReel`).
 

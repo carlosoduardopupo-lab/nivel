@@ -1,7 +1,0 @@
-[
-  {
-    "origin": ["https://blurry-78f0d.web.app", "https://blurry-78f0d.firebaseapp.com"],
-    "method": ["GET"],
-    "maxAgeSeconds": 3600
-  }
-]

@@ -23,6 +23,7 @@ export type Privado = {
   fechaNacimiento: string;
   correo: string | null;
   monedas: number;
+  monedasRegalo?: number;
   vidas: number;
   vidasVuelvenEn: Timestamp | null;
   vidasDia: string | null;

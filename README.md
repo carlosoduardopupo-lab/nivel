@@ -20,7 +20,7 @@ npm --prefix functions install && npm --prefix functions run build
 npm --prefix web install
 
 npm run emuladores        # terminal 1: emuladores (UI en http://localhost:4000)
-npm run seed              # terminal 2: carga 6 creadores (34 fotos) y un jugador de prueba
+npm run seed              # terminal 2: carga 6 creadores (34 fotos), el banco de preguntas y un jugador de prueba
 npm run web               # terminal 2: la web en http://localhost:5173
 ```
 Si cambias algo en `functions/src`, vuelve a ejecutar `npm --prefix functions run build` (o deja `npm --prefix functions run build:watch` abierto).
@@ -42,6 +42,10 @@ Añade `--nube` para hacerlo sobre el proyecto real (`blurry-78f0d`). Usa tu ses
 gcloud auth application-default login
 ```
 
+## Banco de preguntas
+Las preguntas generales están en `functions/scripts/banco.json` (pregunta, correcta, falsa 1, falsa 2). Después de editarlo: `npm run banco` (o `npm run banco -- --nube`).
+Por ahora el juego publicado **no las usa** (regla actual: un intento por foto y, si fallas, solo pagando); quedan cargadas en `bancoPreguntas` para cuando se active.
+
 ## Pruebas
 ```bash
 npm test                  # todo
@@ -60,9 +64,9 @@ Las reglas de Storage leen Firestore, así que el agente de Storage necesita est
 ```bash
 gcloud projects add-iam-policy-binding blurry-78f0d --member="serviceAccount:service-893966626136@gcp-sa-firebasestorage.iam.gserviceaccount.com" --role="roles/firebaserules.firestoreServiceAgent" --condition=None
 ```
-La web descarga las fotos con `getBlob`, que necesita CORS en el bucket (configurado en `storage-cors.json`):
+La web descarga las fotos con `getBlob`, que necesita CORS en el bucket (configurado en `cors.json`):
 ```bash
-gcloud storage buckets update gs://blurry-78f0d.firebasestorage.app --cors-file=storage-cors.json
+gcloud storage buckets update gs://blurry-78f0d.firebasestorage.app --cors-file=cors.json
 ```
 Nada se despliega sin confirmación.
 
