@@ -20,6 +20,15 @@ Estas reglas mandan sobre todo el proyecto. Si el código y este archivo no coin
 - Al perder las 3, el juego se bloquea en todos los perfiles durante 24 horas, salvo pagando con monedas.
 - Las fotos ya desbloqueadas se pueden seguir viendo.
 
+### Cómo se aplican (decisiones de implementación)
+- El "día" se cuenta en la hora de Nueva York.
+- La vida se gasta al **empezar** la pregunta y se devuelve si acierta a tiempo o paga antes de que se acabe el tiempo. Así, cerrar la app a mitad de una pregunta cuenta como fallo.
+- Hay un margen de 2 segundos sobre el tiempo de la foto por la latencia de la red.
+- Con alguna vida gastada (pero no las 3), las vidas vuelven a 3 al empezar un nuevo día. Al perder la tercera, el bloqueo dura 24 horas exactas.
+- Pagar también exige que sea el siguiente nivel. Al pagar se muestra la respuesta de la pregunta abierta o de la última que le salió.
+- El nivel de una foto se asigna al aprobarla. Las fotos ocultas por reportes se saltan en la fila.
+- Me gusta y comentarios: solo quien desbloqueó la foto (y el creador comenta en las suyas).
+
 ## Publicaciones
 - Precio por publicación: mínimo 1 moneda por foto y 3 por video. Máximo 20 para creadores normales y 100 para VIP.
 - VIP es automático: 5.000 seguidores o más, identidad verificada y 80% o más de me gusta.

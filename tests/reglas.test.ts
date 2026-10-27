@@ -5,7 +5,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, getDocs, collection, setDoc, updateDoc, deleteDoc, Timestamp } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, setDoc, updateDoc, deleteDoc, Timestamp, query, where, orderBy } from "firebase/firestore";
 import { ref, getBytes, uploadBytes } from "firebase/storage";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 
@@ -44,8 +44,13 @@ beforeEach(async () => {
       });
       await setDoc(doc(db, "private", uid), { nombreReal: "X", monedas: 50, vidas: 3, vidasVuelvenEn: null });
     }
-    await setDoc(doc(db, "posts", POST), { creadorId: CREADOR, orden: 0, estado: "aprobada", precio: 1, meGusta: 0 });
-    await setDoc(doc(db, "posts", POST_REVISION), { creadorId: CREADOR, orden: 1, estado: "revision", precio: 1 });
+    await setDoc(doc(db, "posts", POST), { creadorId: CREADOR, orden: 0, estado: "aprobada", oculta: false, precio: 1, meGusta: 0 });
+    await setDoc(doc(db, "posts", POST_REVISION), { creadorId: CREADOR, orden: 1, estado: "revision", oculta: false, precio: 1 });
+    await setDoc(doc(db, "posts", "post9"), { creadorId: CREADOR, estado: "subiendo", tipo: "foto", oculta: false });
+    await setDoc(doc(db, "posts", "post10"), { creadorId: CREADOR, estado: "subiendo", tipo: "foto", oculta: false });
+    await setDoc(doc(db, "posts", "post11"), { creadorId: CREADOR, estado: "subiendo", tipo: "foto", oculta: false });
+    await setDoc(doc(db, "posts", "video1"), { creadorId: CREADOR, estado: "subiendo", tipo: "video", oculta: false });
+    await setDoc(doc(db, "posts", "oculto"), { creadorId: CREADOR, orden: 2, estado: "aprobada", oculta: true });
     await setDoc(doc(db, "posts", POST, "preguntas", "0"), { texto: "¿?", opciones: ["a", "b", "c"], correcta: 0 });
     await setDoc(doc(db, "posts", POST, "comentarios", "c1"), { autorId: JUGADOR, texto: "hola" });
     await setDoc(doc(db, "users", JUGADOR, "desbloqueos", POST), { creadorId: CREADOR, via: "acierto" });
@@ -130,6 +135,18 @@ describe("Firestore · juego", () => {
     await assertFails(getDoc(doc(como(JUGADOR).firestore(), "posts", POST_REVISION)));
     await assertSucceeds(getDoc(doc(como(JUGADOR).firestore(), "posts", POST)));
   });
+
+  it("las publicaciones ocultas solo las ve su creador", async () => {
+    await assertFails(getDoc(doc(como(JUGADOR).firestore(), "posts", "oculto")));
+    await assertSucceeds(getDoc(doc(como(CREADOR).firestore(), "posts", "oculto")));
+  });
+
+  it("el feed puede consultar las fotos aprobadas y visibles de un creador", async () => {
+    const q = query(collection(como(JUGADOR).firestore(), "posts"),
+      where("creadorId", "==", CREADOR), where("estado", "==", "aprobada"), where("oculta", "==", false), orderBy("orden"));
+    await assertSucceeds(getDocs(q));
+    await assertFails(getDocs(query(collection(como(JUGADOR).firestore(), "posts"), where("creadorId", "==", CREADOR))));
+  });
 });
 
 describe("Firestore · comentarios", () => {
@@ -181,12 +198,20 @@ describe("Storage", () => {
     await assertFails(getBytes(ref(anonimo().storage(), `borrosas/${POST}.jpg`)));
   });
 
-  it("el creador sube una original nueva, pero no reemplaza ni sube en nombre de otro", async () => {
+  it("el creador sube la original de una publicación que espera archivo", async () => {
     const st = como(CREADOR).storage();
     await assertSucceeds(uploadBytes(ref(st, `originales/${CREADOR}/post9`), img, { contentType: "image/jpeg" }));
+    await assertSucceeds(uploadBytes(ref(st, `originales/${CREADOR}/video1`), img, { contentType: "video/mp4" }));
+  });
+
+  it("no se reemplaza, no se sube en nombre de otro ni con el tipo equivocado", async () => {
+    const st = como(CREADOR).storage();
     await assertFails(uploadBytes(ref(st, `originales/${CREADOR}/${POST}`), img, { contentType: "image/jpeg" }));
     await assertFails(uploadBytes(ref(como(OTRO).storage(), `originales/${CREADOR}/post10`), img, { contentType: "image/jpeg" }));
+    await assertFails(uploadBytes(ref(como(OTRO).storage(), `originales/${OTRO}/post10`), img, { contentType: "image/jpeg" }));
     await assertFails(uploadBytes(ref(st, `originales/${CREADOR}/post11`), img, { contentType: "application/pdf" }));
+    await assertFails(uploadBytes(ref(st, `originales/${CREADOR}/post11`), img, { contentType: "video/mp4" }));
+    await assertFails(uploadBytes(ref(st, `originales/${CREADOR}/no-existe`), img, { contentType: "image/jpeg" }));
   });
 
   it("nadie sube borrosas desde el cliente", async () => {

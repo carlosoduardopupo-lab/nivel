@@ -1,22 +1,36 @@
 // Carga datos de prueba en los emuladores (nunca en la nube).
-// Uso: con los emuladores encendidos, `npm run seed`.
-import { initializeApp } from "firebase-admin/app";
+// Uso: con los emuladores encendidos, `npm run seed` desde la raíz.
+import { randomUUID } from "node:crypto";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
+import sharp from "sharp";
+import { BUCKET, PROYECTO, enNube } from "./entorno.js";
+import { BGS, CARS, art } from "../../web/src/arte.js";
 
-process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
-process.env.FIREBASE_AUTH_EMULATOR_HOST ??= "127.0.0.1:9099";
-process.env.FIREBASE_STORAGE_EMULATOR_HOST ??= "127.0.0.1:9199";
+if (enNube) {
+  console.error("El script de datos de prueba solo funciona con los emuladores.");
+  process.exit(1);
+}
 
-const PROYECTO = "demo-nivel";
-initializeApp({ projectId: PROYECTO });
 const db = getFirestore();
 const auth = getAuth();
+const bucket = getStorage().bucket(BUCKET);
 
 type Nivel = [pregunta: string, opciones: [string, string, string], correcta: number, precio: number];
 type Creador = {
   username: string; intereses: string[]; seguidores: number; porcentajeFallos: number;
   meGusta: number; desbloqueos: number; colores: string[]; niveles: Nivel[];
+};
+
+// Aspecto de cada creador en las ilustraciones del prototipo.
+const ASPECTO: Record<string, { av: string; pelo: string; ropa: string; temas: string[] }> = {
+  vale_fit: { av: "chica", pelo: "#3B2314", ropa: "#D4537E", temas: ["chica"] },
+  sol_viajera: { av: "chica", pelo: "#2B1A10", ropa: "#1A8F6A", temas: ["viaje", "chica"] },
+  autos_rapidos: { av: "chico", pelo: "#1E1E22", ropa: "#2C5FD4", temas: ["auto"] },
+  chef_nocturno: { av: "chico", pelo: "#4A2A1A", ropa: "#2A2126", temas: ["comida"] },
+  dani_beats: { av: "chico", pelo: "#2B1A10", ropa: "#8A3FD0", temas: ["chico"] },
+  mar_azul: { av: "chica", pelo: "#C9A15A", ropa: "#3E8FB0", temas: ["viaje", "chica"] },
 };
 
 // Los mismos creadores del prototipo.
@@ -87,12 +101,19 @@ const INTERESES_JUGADOR = ["Viajes", "Música", "Fitness"];
 const tiempoDe = (p: number) => Math.min(30, 10 + 5 * (p - 1));
 const pctMeGusta = (c: Creador) => (c.desbloqueos >= 20 ? Math.round((c.meGusta / c.desbloqueos) * 100) : null);
 
+async function jpeg(svg: string, ancho: number, alto: number): Promise<Buffer> {
+  return sharp(Buffer.from(svg.replace('width="100%" height="100%"', `width="${ancho}" height="${alto}"`))).jpeg({ quality: 85 }).toBuffer();
+}
+
+/** Sube un archivo con token de descarga y devuelve su URL pública del emulador. */
+async function subir(ruta: string, buf: Buffer): Promise<string> {
+  const token = randomUUID();
+  await bucket.file(ruta).save(buf, { contentType: "image/jpeg", metadata: { metadata: { firebaseStorageDownloadTokens: token, procesado: "1" } } });
+  return `http://localhost:9199/v0/b/${BUCKET}/o/${encodeURIComponent(ruta)}?alt=media&token=${token}`;
+}
+
 async function crearUsuarioAuth(uid: string, correo: string) {
-  try {
-    await auth.deleteUser(uid);
-  } catch {
-    /* no existía */
-  }
+  await auth.deleteUser(uid).catch(() => undefined);
   await auth.createUser({ uid, email: correo, password: "nivel1234", emailVerified: true });
 }
 
@@ -112,27 +133,38 @@ async function main() {
 
   for (const [ci, c] of CREADORES.entries()) {
     const uid = `uid_${c.username}`;
+    const a = ASPECTO[c.username];
     await crearUsuarioAuth(uid, `${c.username}@nivel.test`);
+    const avatarUrl = await subir(`avatares/${uid}.jpg`, await jpeg(art(a.av, c.colores[0], { hair: a.pelo, shirt: a.ropa }), 300, 400));
     const b = db.batch();
     b.set(db.doc(`users/${uid}`), {
-      username: c.username, usernameLower: c.username.toLowerCase(), avatarUrl: null, intereses: c.intereses,
+      username: c.username, avatarUrl, intereses: c.intereses,
       seguidores: c.seguidores, siguiendo: 0, totalMeGusta: c.meGusta, totalDesbloqueos: c.desbloqueos,
       totalIntentos: 0, totalFallos: 0, porcentajeMeGusta: pctMeGusta(c), porcentajeFallos: c.porcentajeFallos,
-      numPublicaciones: c.niveles.length, ultimaPublicacionEn: Timestamp.fromMillis(ahora - ci * 3_600_000),
-      esVip: false, identidadVerificada: false, creadoEn: Timestamp.fromMillis(ahora - 90 * 86_400_000),
+      numPublicaciones: c.niveles.length, precioMinimo: Math.min(...c.niveles.map((n) => n[3])),
+      ultimaPublicacionEn: Timestamp.fromMillis(ahora - ci * 3_600_000),
+      esCreador: true, esVip: false, identidadVerificada: false, creadoEn: Timestamp.fromMillis(ahora - (90 - ci * 15) * 86_400_000),
     });
-    b.set(db.doc(`usernames/${c.username.toLowerCase()}`), { uid });
+    b.set(db.doc(`usernames/${c.username}`), { uid });
     b.set(db.doc(`private/${uid}`), {
       nombreReal: c.username, fechaNacimiento: "1995-01-01", correo: `${c.username}@nivel.test`,
-      monedas: 0, vidas: 3, vidasVuelvenEn: null, gananciasDisponibles: 0, gananciasEnEspera: 0, stripeCuentaId: null,
+      monedas: 0, vidas: 3, vidasVuelvenEn: null, vidasDia: null, gananciasDisponibles: 0, gananciasEnEspera: 0, stripeCuentaId: null,
+      ajustes: { nuevas: true, vidas: true, ganancias: true, comentarios: false, comentar: true, sugeridos: true },
     });
 
-    c.niveles.forEach(([texto, opciones, correcta, precio], orden) => {
+    for (const [orden, [texto, opciones, correcta, precio]] of c.niveles.entries()) {
       const postId = `${c.username}_${orden}`;
+      const tema = a.temas[orden % a.temas.length];
+      const dibujo = art(tema, BGS[(orden + c.username.length) % BGS.length], { hair: a.pelo, shirt: a.ropa, car: CARS[orden % CARS.length] });
+      const original = await jpeg(dibujo, 600, 820);
+      const rutaOriginal = `originales/${uid}/${postId}`;
+      const rutaBorrosa = `borrosas/${postId}.jpg`;
+      await subir(rutaOriginal, original);
+      await subir(rutaBorrosa, await sharp(original).resize(360, 480).blur(28).jpeg({ quality: 60 }).toBuffer());
       b.set(db.doc(`posts/${postId}`), {
         creadorId: uid, orden, tipo: "foto", precio, tiempo: tiempoDe(precio), estado: "aprobada", oculta: false,
-        rutaOriginal: `originales/${uid}/${postId}`, rutaBorrosa: null, colorDemo: c.colores[0],
-        meGusta: 40 + ((orden * 97) % 380), desbloqueos: 0, fallos: 0, intentos: 0, reportes: 0, comentarios: 0,
+        rutaOriginal, rutaBorrosa,
+        meGusta: 40 + ((orden * 97) % 380), desbloqueos: 0, fallos: 0, intentos: 0, reportes: 0, comentarios: 0, monedasGastadas: 0,
         creadoEn: Timestamp.fromMillis(ahora - (c.niveles.length - orden) * 86_400_000),
       });
       const ia1 = EXTRA[extra++ % EXTRA.length];
@@ -143,7 +175,7 @@ async function main() {
         { texto: ia2[0], opciones: ia2[1], correcta: ia2[2], autor: "ia" },
       ];
       preguntas.forEach((p, n) => b.set(db.doc(`posts/${postId}/preguntas/${n}`), p));
-    });
+    }
     await b.commit();
     console.log(`✓ @${c.username}: ${c.niveles.length} fotos`);
   }
@@ -151,17 +183,19 @@ async function main() {
   // Un jugador de prueba como el del prototipo (luna_misterio).
   const uid = "uid_luna_misterio";
   await crearUsuarioAuth(uid, "luna@nivel.test");
+  const avatarUrl = await subir(`avatares/${uid}.jpg`, await jpeg(art("chica", "#FAC775", { hair: "#712B13" }), 300, 400));
   const b = db.batch();
   b.set(db.doc(`users/${uid}`), {
-    username: "luna_misterio", usernameLower: "luna_misterio", avatarUrl: null, intereses: INTERESES_JUGADOR,
+    username: "luna_misterio", avatarUrl, intereses: INTERESES_JUGADOR,
     seguidores: 0, siguiendo: 3, totalMeGusta: 0, totalDesbloqueos: 0, totalIntentos: 0, totalFallos: 0,
-    porcentajeMeGusta: null, porcentajeFallos: 0, numPublicaciones: 0, ultimaPublicacionEn: null,
-    esVip: false, identidadVerificada: false, creadoEn: Timestamp.now(),
+    porcentajeMeGusta: null, porcentajeFallos: 0, numPublicaciones: 0, precioMinimo: null, ultimaPublicacionEn: null,
+    esCreador: false, esVip: false, identidadVerificada: false, creadoEn: Timestamp.now(),
   });
   b.set(db.doc("usernames/luna_misterio"), { uid });
   b.set(db.doc(`private/${uid}`), {
     nombreReal: "Luna Prueba", fechaNacimiento: "1998-05-10", correo: "luna@nivel.test",
-    monedas: 85, vidas: 3, vidasVuelvenEn: null, gananciasDisponibles: 0, gananciasEnEspera: 0, stripeCuentaId: null,
+    monedas: 85, vidas: 3, vidasVuelvenEn: null, vidasDia: null, gananciasDisponibles: 0, gananciasEnEspera: 0, stripeCuentaId: null,
+    ajustes: { nuevas: true, vidas: true, ganancias: true, comentarios: false, comentar: true, sugeridos: true },
   });
   for (const seguido of ["vale_fit", "sol_viajera", "chef_nocturno"]) {
     b.set(db.doc(`users/${uid}/siguiendo/uid_${seguido}`), { creadoEn: Timestamp.now() });

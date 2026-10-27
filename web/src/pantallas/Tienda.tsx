@@ -1,0 +1,82 @@
+import { useState } from "react";
+import { Barra, Corazones } from "../componentes";
+import { Ic } from "../iconos";
+import { useNav } from "../nav";
+import { useSesion, vidasAhora } from "../sesion";
+import { comisionRetiro, dinero, fmtFalta, nf } from "../util";
+
+// Los paquetes reales se definen en el servidor (Fase 3). Aquí solo se muestran.
+const PAQUETES = [
+  { id: "p100", m: 100, p: 0.99, x: 0 },
+  { id: "p550", m: 550, p: 4.99, x: 10 },
+  { id: "p1150", m: 1150, p: 9.99, x: 15, tag: "MÁS POPULAR", col: "var(--rosa)" },
+  { id: "p2400", m: 2400, p: 19.99, x: 20, tag: "MEJOR PRECIO", col: "var(--verde)" },
+];
+
+export function Tienda() {
+  const { privado } = useSesion();
+  const { aviso } = useNav();
+  const [sel, setSel] = useState(2);
+  const vidas = vidasAhora(privado);
+  const k = PAQUETES[sel];
+  return (
+    <>
+      <Barra titulo="Monedas" derecha={<span className="pill"><span style={{ color: "var(--naranja)" }}><Ic n="coin" /></span>{nf(privado?.monedas ?? 0)}</span>} />
+      {vidas === 0 && (
+        <div className="wallet" style={{ margin: "6px 0 14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Corazones vidas={0} /><b>Te quedaste sin vidas</b></div>
+          <p style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>Vuelven en <b>{fmtFalta((privado?.vidasVuelvenEn?.toMillis() ?? 0) - Date.now())}</b>, o sigue jugando ahora con monedas.</p>
+        </div>
+      )}
+      <div style={{ textAlign: "center", padding: "6px 0 18px" }}>
+        <span className="coin" style={{ width: 64, height: 64, borderRadius: "50%", fontSize: 32, margin: "0 auto" }}><Ic n="coin" /></span>
+        <p className="h2" style={{ fontSize: 22, marginTop: 10 }}>Consigue monedas</p>
+        <p className="sub">Úsalas para ver respuestas y avanzar</p>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }} role="radiogroup">
+        {PAQUETES.map((p, i) => (
+          <button key={p.id} className={`pack ${i === sel ? "on" : ""}`} role="radio" aria-checked={i === sel} onClick={() => setSel(i)}>
+            {p.tag && <span className="ribbon" style={{ background: p.col }}>{p.tag}</span>}
+            <span className="coin"><Ic n="coin" /></span>
+            <span style={{ flex: 1 }}>
+              <b style={{ fontFamily: "var(--f-display)", fontSize: 18 }}>{nf(p.m)}</b> <span style={{ fontSize: 13, color: "var(--muted)" }}>monedas</span>
+              <span style={{ display: "block", fontSize: 12, marginTop: 2, fontWeight: 600, color: p.x ? "var(--verde)" : "var(--muted)" }}>{p.x ? `+${p.x}% de regalo` : "Para probar"}</span>
+            </span>
+            <b style={{ fontSize: 16, fontVariantNumeric: "tabular-nums" }}>${p.p.toFixed(2)}</b>
+          </button>
+        ))}
+      </div>
+      <p style={{ textAlign: "center", fontSize: 12, color: "var(--muted)", marginTop: 16 }}><Ic n="lock" /> Pago seguro · Las monedas no caducan</p>
+      <div style={{ height: 70 }} />
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "12px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))", background: "var(--bg)" }}>
+        <button className="btn grad" onClick={() => aviso("La compra con Stripe llega en la Fase 3")}>Comprar {nf(k.m)} monedas · ${k.p.toFixed(2)}</button>
+      </div>
+    </>
+  );
+}
+
+export function Retiro() {
+  const { privado } = useSesion();
+  const disp = privado?.gananciasDisponibles ?? 0;
+  const com = disp ? comisionRetiro(disp) : 0;
+  return (
+    <>
+      <Barra titulo="Retirar ganancias" />
+      <div className="wallet">
+        <small>DISPONIBLE PARA RETIRAR</small>
+        <div className="num" style={{ fontSize: 34, color: "#6FD6AE" }}>{dinero(disp)}</div>
+        <p style={{ fontSize: 12, opacity: 0.8, marginTop: 10 }}><Ic n="clock" /> En espera: {dinero(privado?.gananciasEnEspera ?? 0)} · lo ganado se libera a los 7 días</p>
+      </div>
+      <div style={{ marginTop: 14, background: "var(--surface2)", borderRadius: 14, padding: "10px 14px" }}>
+        <div className="line"><span style={{ color: "var(--muted)" }}>Retiras</span><span>{dinero(disp)}</span></div>
+        <div className="line"><span style={{ color: "var(--muted)" }}>Comisión de envío</span><span style={{ color: "var(--rojo)" }}>−{dinero(com)}</span></div>
+        <div className="line" style={{ borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 9 }}><b>Recibes</b><b style={{ color: "var(--verde)", fontSize: 16 }}>{dinero(Math.max(0, disp - com))}</b></div>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--muted)", margin: "8px 2px 0" }}>Mínimo para retirar: $50. Comisión: $2 + 0.25% + $0.25.</p>
+      <div style={{ marginTop: 18, padding: 14, borderRadius: 14, border: "1.5px dashed var(--muted)" }}>
+        <b style={{ fontSize: 14 }}>Conectar cuenta bancaria</b>
+        <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Los retiros con Stripe llegan en la Fase 4.</p>
+      </div>
+    </>
+  );
+}

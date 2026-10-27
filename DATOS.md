@@ -4,7 +4,7 @@ Convenciones:
 - Fechas: `Timestamp` de Firestore.
 - Dinero: enteros en **milésimas de dólar** (`1000` = $1.00). 1 moneda gastada = 5 milésimas para el creador.
 - "Solo Functions" = el cliente no puede escribir (las reglas lo bloquean); lo escribe el Admin SDK.
-- "Día" para intentos = día en UTC con formato `AAAA-MM-DD`.
+- "Día del juego" (intentos y vidas) = día en la hora de Nueva York (`America/New_York`), formato `AAAA-MM-DD`.
 
 ## users/{uid} — perfil público
 Lectura: usuarios registrados. Escritura del dueño solo en `avatarUrl` e `intereses`; el resto, solo Functions.
@@ -24,6 +24,8 @@ Lectura: usuarios registrados. Escritura del dueño solo en `avatarUrl` e `inter
 | porcentajeMeGusta | number \| null | null hasta 20 desbloqueos ("Nuevo") |
 | porcentajeFallos | number | dificultad, 0–100 |
 | numPublicaciones | number | publicaciones aprobadas (define el orden de la siguiente) |
+| precioMinimo | number \| null | el precio más bajo de sus fotos ("desde N" en el feed) |
+| esCreador | boolean | true desde su primera publicación aprobada (el feed solo muestra creadores) |
 | ultimaPublicacionEn | Timestamp \| null | para el filtro "Siguiendo" |
 | esVip | boolean | lo recalcula Functions |
 | identidadVerificada | boolean | lo pone Functions (Stripe Connect) |
@@ -43,6 +45,8 @@ Lectura: solo el dueño. Escritura: solo Functions.
 | monedas | number |
 | vidas | number (0–3) |
 | vidasVuelvenEn | Timestamp \| null |
+| vidasDia | string \| null — día del juego en que gastó su última vida |
+| ajustes | map de booleanos (notificaciones y privacidad); se cambia con `guardarAjustes` |
 | gananciasDisponibles | number (milésimas) |
 | gananciasEnEspera | number (milésimas) |
 | stripeCuentaId | string \| null |
@@ -57,11 +61,13 @@ Lectura: usuarios registrados si `estado == "aprobada"` y no `oculta`; el creado
 | Campo | Tipo | Notas |
 |---|---|---|
 | creadorId | string | uid |
-| orden | number | 0, 1, 2… dentro de la fila del creador |
+| orden | number \| null | 0, 1, 2… dentro de la fila del creador; se asigna al aprobarla |
 | tipo | "foto" \| "video" | |
 | precio | number | monedas; foto 1–20, video 3–20 (VIP hasta 100) |
 | tiempo | number | segundos = min(30, 10 + 5·(precio−1)) |
-| estado | "revision" \| "aprobada" \| "rechazada" | |
+| estado | "subiendo" \| "revision" \| "aprobada" \| "rechazada" | "subiendo" hasta que llega el archivo |
+| motivoRechazo | string | si se rechazó |
+| monedasGastadas | number | monedas pagadas por ver la respuesta |
 | oculta | boolean | true con 3+ reportes, hasta revisión |
 | rutaOriginal | string | `originales/{creadorId}/{postId}` |
 | rutaBorrosa | string \| null | `borrosas/{postId}.jpg` |
@@ -85,7 +91,7 @@ La pregunta 0 es siempre la del creador.
 `{ autorId, username, texto, creadoEn }`. Lectura: quien desbloqueó la foto y el creador. Escritura: solo Functions.
 
 ## users/{uid}/desbloqueos/{postId}
-`{ creadorId, via: "acierto" | "pago", monedas, creadoEn }`. Lectura: dueño. Escritura: solo Functions.
+`{ creadorId, orden, via: "acierto" | "pago", monedas, creadoEn }`. Lectura: dueño. Escritura: solo Functions.
 Su existencia da acceso a la foto original en Storage.
 
 ## users/{uid}/progreso/{creadorId}
@@ -93,14 +99,14 @@ Su existencia da acceso a la foto original en Storage.
 El jugador solo puede jugar el post con `orden == siguienteOrden`.
 
 ## users/{uid}/intentos/{postId}
-`{ preguntasUsadas: number (0–3), ultimoDia: "AAAA-MM-DD", inicioEn: Timestamp | null, preguntaActual: number | null, ordenOpciones: number[] | null }`.
+`{ creadorId, preguntasUsadas: number (0–3), ultimoDia: "AAAA-MM-DD", inicioEn: Timestamp | null, preguntaActual: number | null, ordenOpciones: number[] | null, pendiente: boolean, resultado: "acierto" | "fallo" | "tiempo" | "pago" | null }`.
 Lectura: dueño. Solo Functions.
 
 ## users/{uid}/siguiendo/{creadorId}
 `{ creadoEn }`. Lectura: registrados. Solo Functions (mantiene el contador `seguidores`).
 
 ## reportes/{id}
-`{ postId, autorId, motivo: "inapropiado" | "menor" | "robada" | "respuesta" | "otro", detalle, estado: "abierto" | "cerrado", creadoEn }`.
+Id: `{postId}_{uid}` (un reporte por persona y foto). `{ postId, autorId, motivo: "inapropiado" | "menor" | "robada" | "respuesta" | "otro", detalle, estado: "abierto" | "cerrado", creadoEn }`.
 Nadie lo lee desde el cliente. Solo Functions.
 
 ## compras/{stripeSessionId}
@@ -114,6 +120,6 @@ Lectura: el dueño. Solo Functions.
 ## Storage
 | Ruta | Lectura | Escritura |
 |---|---|---|
-| `originales/{creadorId}/{postId}` | el creador, o quien tenga `users/{uid}/desbloqueos/{postId}` | el creador al crear (imagen o video, ≤ 50 MB); nunca se reemplaza |
+| `originales/{creadorId}/{postId}` | el creador, o quien tenga `users/{uid}/desbloqueos/{postId}` | el creador, una vez, si el post está en "subiendo" y el tipo coincide (≤ 50 MB). Functions lo reemplaza por una copia sin metadatos |
 | `borrosas/{postId}.jpg` | usuarios registrados | solo Functions |
 | `avatares/{uid}.jpg` | usuarios registrados | el dueño (imagen ≤ 5 MB) |

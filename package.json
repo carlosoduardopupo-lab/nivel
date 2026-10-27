@@ -5,15 +5,16 @@
   "scripts": {
     "emuladores": "firebase emulators:start --project demo-nivel --import=./emulator-data --export-on-exit=./emulator-data",
     "emuladores:limpio": "firebase emulators:start --project demo-nivel",
-    "seed": "tsx scripts/seed.ts",
+    "seed": "npm --prefix functions run seed",
     "test:reglas": "firebase emulators:exec --project demo-nivel --only firestore,storage \"vitest run\"",
-    "web": "npm --prefix web run dev"
+    "web": "npm --prefix web run dev",
+    "moderar": "npm --prefix functions run moderar --",
+    "test:juego": "firebase emulators:exec --project demo-nivel-pruebas --only firestore \"npm --prefix functions test\"",
+    "test": "npm run test:reglas && npm run test:juego"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
     "firebase": "^13.0.0",
-    "firebase-admin": "^13.0.0",
-    "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^3.0.0"
   }

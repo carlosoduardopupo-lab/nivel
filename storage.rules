@@ -7,19 +7,27 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function publicacionEsperando(creadorId, postId) {
+      let post = firestore.get(/databases/(default)/documents/posts/$(postId)).data;
+      return post.creadorId == creadorId
+        && post.estado == 'subiendo'
+        && ((post.tipo == 'foto' && request.resource.contentType.matches('image/.*'))
+            || (post.tipo == 'video' && request.resource.contentType.matches('video/.*')));
+    }
+
     // Foto o video original: solo el creador o quien la desbloqueó.
     match /originales/{creadorId}/{postId} {
       allow read: if registrado() && (
         request.auth.uid == creadorId
         || firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)/desbloqueos/$(postId))
       );
-      // El creador sube una sola vez; no se puede reemplazar ni borrar desde el cliente.
+      // El creador sube una sola vez, después de crear la publicación con
+      // crearPublicacion; no se puede reemplazar ni borrar desde el cliente.
       allow create: if registrado()
         && request.auth.uid == creadorId
         && resource == null
         && request.resource.size < 50 * 1024 * 1024
-        && (request.resource.contentType.matches('image/.*')
-            || request.resource.contentType.matches('video/.*'));
+        && publicacionEsperando(creadorId, postId);
       allow update, delete: if false;
     }
 

@@ -66,10 +66,10 @@ service cloud.firestore {
 
     // ---------- Publicaciones ----------
     match /posts/{postId} {
-      // Get de un doc inexistente devuelve resource == null; se niega.
-      allow read: if registrado() && resource != null && (
+      // Las consultas del feed deben filtrar estado == 'aprobada' y oculta == false.
+      allow read: if registrado() && (
         resource.data.creadorId == request.auth.uid
-        || (resource.data.estado == 'aprobada' && resource.data.get('oculta', false) != true)
+        || (resource.data.estado == 'aprobada' && resource.data.oculta == false)
       );
       allow write: if false;
 

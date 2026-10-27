@@ -18,16 +18,30 @@ npm --prefix functions install && npm --prefix functions run build
 npm --prefix web install
 
 npm run emuladores        # terminal 1: emuladores (UI en http://localhost:4000)
-npm run seed              # terminal 2: carga 6 creadores y un jugador de prueba
+npm run seed              # terminal 2: carga 6 creadores (34 fotos) y un jugador de prueba
 npm run web               # terminal 2: la web en http://localhost:5173
 ```
+Si cambias algo en `functions/src`, vuelve a ejecutar `npm --prefix functions run build` (o deja `npm --prefix functions run build:watch` abierto).
 Jugador de prueba: `luna@nivel.test` / `nivel1234`. Los creadores: `<usuario>@nivel.test` / `nivel1234`.
 
 `npm run emuladores` guarda los datos en `emulator-data/` al cerrar; `npm run emuladores:limpio` arranca vacío.
 
+## Moderación manual
+Toda publicación nueva queda "En revisión" hasta que la apruebes:
+```bash
+npm run moderar -- lista              # publicaciones en revisión
+npm run moderar -- aprobar <postId>
+npm run moderar -- rechazar <postId> motivo
+npm run moderar -- ocultas            # ocultadas por 3 reportes
+npm run moderar -- mostrar <postId>
+```
+Añade `--nube` para hacerlo sobre el proyecto real (necesita `GOOGLE_APPLICATION_CREDENTIALS`).
+
 ## Pruebas
 ```bash
-npm run test:reglas       # arranca Firestore y Storage emulados y ejecuta tests/
+npm test                  # todo
+npm run test:reglas       # reglas de Firestore y Storage (tests/)
+npm run test:juego        # empezarPregunta, responder y pagarRespuesta (functions/test/)
 ```
 
 ## Proyecto de Firebase real
