@@ -78,6 +78,18 @@ describe("Firestore · publicaciones eliminadas", () => {
   });
 });
 
+describe("Firestore · bloqueos", () => {
+  it("solo el dueño ve a quién bloqueó; nadie lo escribe desde el cliente", async () => {
+    await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), "users", JUGADOR, "bloqueados", OTRO), { creadoEn: Timestamp.now() }));
+    await assertSucceeds(getDoc(doc(como(JUGADOR).firestore(), "users", JUGADOR, "bloqueados", OTRO)));
+    await assertFails(getDoc(doc(como(OTRO).firestore(), "users", JUGADOR, "bloqueados", OTRO)));
+    await assertFails(setDoc(doc(como(JUGADOR).firestore(), "users", JUGADOR, "bloqueados", CREADOR), { creadoEn: Timestamp.now() }));
+  });
+  it("problemas y reportes no se leen desde el cliente", async () => {
+    await assertFails(getDocs(collection(como(JUGADOR).firestore(), "problemas")));
+  });
+});
+
 describe("Firestore · reels", () => {
   it("los publicados los lee cualquier registrado; los que se suben, solo su autor", async () => {
     await assertSucceeds(getDoc(doc(como(OTRO).firestore(), "reels", "rPub")));

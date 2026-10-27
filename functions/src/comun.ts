@@ -74,3 +74,10 @@ export function mezclar<T>(arr: T[], aleatorio: () => number = Math.random): T[]
   }
   return a;
 }
+
+/** ¿`dueno` bloqueó a `uid`? (dentro de una transacción si se pasa `tx`). */
+export async function bloqueadoPor(dueno: string, uid: string, tx?: Transaction): Promise<boolean> {
+  if (dueno === uid) return false;
+  const ref = db().doc(`users/${dueno}/bloqueados/${uid}`);
+  return (tx ? await tx.get(ref) : await ref.get()).exists;
+}

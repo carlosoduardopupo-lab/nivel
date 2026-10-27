@@ -47,6 +47,11 @@ service cloud.firestore {
         allow read: if registrado();
         allow write: if false;
       }
+      // Usuarios que bloqueé: solo los veo yo; los escribe Functions (bloquear).
+      match /bloqueados/{otroId} {
+        allow read: if esYo(uid);
+        allow write: if false;
+      }
     }
 
     match /usernames/{nombre} {

@@ -114,11 +114,17 @@ El jugador solo puede jugar el post con `orden == siguienteOrden`.
 `{ creadorId, preguntasUsadas: number (0–3), ultimoDia: "AAAA-MM-DD", inicioEn: Timestamp | null, preguntaActual: number | null, ordenOpciones: number[] | null, pendiente: boolean, resultado: "acierto" | "fallo" | "tiempo" | "pago" | null }`.
 Lectura: dueño. Solo Functions.
 
+## users/{uid}/bloqueados/{otroId}
+`{ creadoEn }`. Lectura: solo el dueño. Solo Functions (`bloquear`).
+
+## problemas/{id}
+`{ autorId, username, texto, estado: "abierto" | "resuelto", creadoEn }`. Reportes de problemas desde Ajustes. Nadie lo lee desde el cliente.
+
 ## users/{uid}/siguiendo/{creadorId}
 `{ creadoEn }`. Lectura: registrados. Solo Functions (mantiene el contador `seguidores`).
 
 ## reportes/{id}
-Id: `{postId}_{uid}` (un reporte por persona y foto). `{ postId, autorId, motivo: "inapropiado" | "menor" | "robada" | "respuesta" | "otro", detalle, estado: "abierto" | "cerrado", creadoEn }`.
+Id: `{postId}_{uid}` (un reporte por persona y foto) o `reel_{reelId}_{uid}` con `tipo: "reel"` para reels. `{ postId, autorId, motivo: "inapropiado" | "menor" | "robada" | "respuesta" | "otro", detalle, estado: "abierto" | "cerrado", creadoEn }`.
 Nadie lo lee desde el cliente. Solo Functions.
 
 ## compras/{stripeSessionId}
@@ -139,7 +145,7 @@ Lectura: registrados si `estado == "publicado"`; el autor siempre. Escritura: so
 |---|---|---|
 | autorId | string | uid |
 | texto | string | hasta 150 caracteres, puede ir vacío |
-| estado | "subiendo" \| "publicado" \| "revision" \| "rechazado" | "subiendo" hasta que se procesa el video |
+| estado | "subiendo" \| "publicado" \| "revision" \| "rechazado" \| "oculto" | "subiendo" hasta que se procesa el video; "oculto" con 3 reportes |
 | rutaVideo | string \| null | `reels/{autorId}/{reelId}` (mp4 sin metadatos, con token para streaming) |
 | rutaPortada | string \| null | `portadas-reels/{reelId}.jpg` |
 | duracion | number \| null | segundos (máx. 60) |
