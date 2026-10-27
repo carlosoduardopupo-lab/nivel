@@ -1,8 +1,11 @@
+import { Ic } from "./iconos";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 export type Pantalla =
   | { n: "feed" }
   | { n: "creador"; id: string; postId?: string }
+  | { n: "reels"; autorId?: string; reelId?: string }
+  | { n: "crearReel" }
   | { n: "perfil" }
   | { n: "crear" }
   | { n: "tienda" }
@@ -47,7 +50,10 @@ export function ProveedorNav({ children }: { children: (actual: Pantalla) => Rea
       {hoja && <div className="scrim" onClick={cerrarHoja} />}
       {hoja && (
         <div className="sheet" role="dialog">
-          <div className="grab" />
+          <div style={{ position: "relative", display: "flex", alignItems: "center", height: 34, margin: "-4px 0 8px -8px" }}>
+            <button className="iconbtn" aria-label="Volver" onClick={cerrarHoja}><Ic n="back" /></button>
+            <div className="grab" style={{ position: "absolute", left: "50%", top: 4, transform: "translateX(-50%)", margin: 0 }} />
+          </div>
           {hoja}
         </div>
       )}

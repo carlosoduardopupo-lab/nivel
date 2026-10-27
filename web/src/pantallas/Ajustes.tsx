@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { sendPasswordResetEmail, signOut } from "firebase/auth";
 import { collection, doc, getDocs, orderBy, query, updateDoc, where } from "firebase/firestore";
 import { api, errorDe } from "../api";
-import { Barra, TituloHoja } from "../componentes";
+import { Barra, HojaReglasReferidos, TituloHoja } from "../componentes";
 import { auth, db } from "../firebase";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
@@ -14,7 +14,8 @@ type Fila = { i: string; t: string; s?: string; sw?: string; accion?: () => void
 export function Ajustes() {
   const { perfil, privado, usuario } = useSesion();
   const { ir, abrirHoja, cerrarHoja, aviso } = useNav();
-  const [sw, setSw] = useState<Record<string, boolean>>(privado?.ajustes ?? {});
+  // escaparate: activado salvo que el creador lo haya desactivado (las cuentas antiguas no lo tienen).
+  const [sw, setSw] = useState<Record<string, boolean>>({ escaparate: true, ...privado?.ajustes });
   useEffect(() => { if (privado?.ajustes) setSw(privado.ajustes); }, [privado?.ajustes]);
 
   async function alternar(k: string) {
@@ -46,6 +47,7 @@ export function Ajustes() {
     ["Privacidad", [
       { i: "msg", t: "Permitir comentarios", s: "Solo quien desbloqueó la foto", sw: "comentar" },
       { i: "spark", t: "Aparecer en \"Para ti\"", s: "Te sugerimos a otros jugadores", sw: "sugeridos" },
+      { i: "eye", t: "Aparecer en la web de Blurry", s: "Si estás entre los populares, tu tarjeta (foto de perfil) sale en la página de descarga", sw: "escaparate" },
       { i: "ban", t: "Cuentas bloqueadas", s: "Ninguna", accion: pronto("Cuentas bloqueadas") },
     ]],
     ["Pagos", [
@@ -57,7 +59,9 @@ export function Ajustes() {
       { i: "help", t: "Centro de ayuda", accion: pronto("Centro de ayuda") },
       { i: "flag", t: "Reportar un problema", accion: pronto("Reportar un problema") },
       { i: "book", t: "Reglas del juego", accion: () => abrirHoja(<HojaReglas />) },
-      { i: "file", t: "Términos y privacidad", accion: pronto("Términos y privacidad") },
+      { i: "share", t: "Reglas de referidos", accion: () => abrirHoja(<HojaReglasReferidos />) },
+      { i: "file", t: "Términos de uso", accion: () => window.open("/terminos/", "_blank", "noopener") },
+      { i: "shield", t: "Política de privacidad", accion: () => window.open("/privacidad/", "_blank", "noopener") },
     ]],
   ];
 
@@ -95,7 +99,7 @@ export function Ajustes() {
         )}><Ic n="out" /> Cerrar sesión</button>
         <button style={{ textAlign: "center", fontWeight: 700, fontSize: 13, color: "var(--rojo)", padding: 12 }} onClick={pronto("Eliminar cuenta")}>Eliminar cuenta</button>
       </div>
-      <p style={{ textAlign: "center", fontSize: 11, color: "var(--muted)" }}>Nivel · versión 0.2</p>
+      <p style={{ textAlign: "center", fontSize: 11, color: "var(--muted)" }}>Blurry · versión 0.3</p>
     </>
   );
 }
@@ -153,12 +157,11 @@ function HojaCompras() {
 const REGLAS: [string, string][] = [
   ["Cada foto es un nivel", "Se juega en orden. Aciertas la trivia y la foto queda en tu colección para siempre."],
   ["3 vidas al día", "Cada fallo gasta una. Sin vidas, esperas 24 horas o sigues pagando con monedas."],
-  ["Si fallas", "Un intento por foto al día. Al día siguiente te toca otra pregunta distinta: de otra foto del mismo creador o una general. Nunca se repiten."],
+  ["Una pregunta por foto", "Tienes un intento. Si fallas, solo puedes verla pagando."],
   ["Tiempo según el precio", "10 segundos con 1 moneda y 5 más por cada moneda extra, hasta 30."],
   ["Ver respuesta", "El botón con el precio siempre está disponible: pagas y la foto es tuya."],
   ["Precios", "De 1 a 20 monedas por foto (videos desde 3). Los creadores VIP pueden cobrar hasta 100."],
-  ["Monedas de regalo", "Al registrarte recibes 100 monedas para ver fotos."],
-  ["Creadores", "Reciben $0.005 por cada moneda comprada que se gasta en sus publicaciones (las de regalo no cuentan). Retiro mínimo de $50."],
+  ["Creadores", "Reciben $0.005 por cada moneda gastada en sus publicaciones. Retiro mínimo de $50."],
 ];
 
 export function HojaReglas() {

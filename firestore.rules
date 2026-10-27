@@ -64,12 +64,32 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Reels (gratis; los escribe solo Functions) ----------
+    match /reels/{reelId} {
+      // Las consultas deben filtrar estado == 'publicado' (o autorId == yo).
+      allow read: if registrado() && (resource.data.estado == 'publicado' || resource.data.autorId == request.auth.uid);
+      allow write: if false;
+
+      match /meGusta/{likerUid} {
+        allow read: if registrado();
+        allow write: if false;
+      }
+
+      // Los comentarios de los reels son públicos para registrados.
+      match /comentarios/{id} {
+        allow read: if registrado();
+        allow write: if false;
+      }
+    }
+
     // ---------- Publicaciones ----------
     match /posts/{postId} {
       // Las consultas del feed deben filtrar estado == 'aprobada' y oculta == false.
       allow read: if registrado() && (
         resource.data.creadorId == request.auth.uid
         || (resource.data.estado == 'aprobada' && resource.data.oculta == false)
+        // Quien la desbloqueó la conserva aunque el creador la elimine.
+        || exists(/databases/$(database)/documents/users/$(request.auth.uid)/desbloqueos/$(postId))
       );
       allow write: if false;
 

@@ -1,6 +1,27 @@
 import { getBlob, ref } from "firebase/storage";
 import { storage } from "./firebase";
 
+// Código de referido (?ref=usuario) del enlace con el que llegó. Se guarda hasta registrarse.
+const CLAVE_REF = "blurry-ref";
+export function guardarReferido() {
+  const r = new URLSearchParams(location.search).get("ref");
+  if (!r) return;
+  try { localStorage.setItem(CLAVE_REF, r); } catch { /* sin almacenamiento: se pierde el referido */ }
+}
+export function leerReferido(): string | undefined {
+  try { return localStorage.getItem(CLAVE_REF) ?? undefined; } catch { return undefined; }
+}
+export function borrarReferido() {
+  try { localStorage.removeItem(CLAVE_REF); } catch { /* nada */ }
+}
+
+// Fase de prueba (functions/src/reglas.ts): sin compras ni retiros; las monedas son para probar.
+export const FASE_PRUEBA = true;
+
+// Referidos (functions/src/reglas.ts): cada amigo nuevo = 3 vidas; al tercero, 500 monedas.
+export const REF_AMIGOS = 3;
+export const REF_MONEDAS = 500;
+
 export const INTERESES = ["Viajes", "Comida", "Autos", "Fitness", "Música", "Moda", "Cine", "Deportes", "Tecnología", "Arte", "Mascotas", "Naturaleza", "Fotografía", "Videojuegos", "Baile"];
 export const tiempoDe = (p: number) => Math.min(30, 10 + 5 * (p - 1));
 export const nf = (n: number) => n.toLocaleString("es");

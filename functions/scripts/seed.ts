@@ -128,7 +128,7 @@ async function main() {
       username: c.username, avatarUrl, intereses: c.intereses,
       seguidores: c.seguidores, siguiendo: 0, totalMeGusta: c.meGusta, totalDesbloqueos: c.desbloqueos,
       totalIntentos: 0, totalFallos: 0, porcentajeMeGusta: pctMeGusta(c), porcentajeFallos: c.porcentajeFallos,
-      numPublicaciones: c.niveles.length, precioMinimo: Math.min(...c.niveles.map((n) => n[3])),
+      numPublicaciones: c.niveles.length, precioPromedio: Math.round(c.niveles.reduce((a, n) => a + n[3], 0) / c.niveles.length),
       ultimaPublicacionEn: Timestamp.fromMillis(ahora - ci * 3_600_000),
       esCreador: true, esVip: false, identidadVerificada: false, creadoEn: Timestamp.fromMillis(ahora - (90 - ci * 15) * 86_400_000),
     });
@@ -168,7 +168,7 @@ async function main() {
   b.set(db.doc(`users/${uid}`), {
     username: "luna_misterio", avatarUrl, intereses: INTERESES_JUGADOR,
     seguidores: 0, siguiendo: 3, totalMeGusta: 0, totalDesbloqueos: 0, totalIntentos: 0, totalFallos: 0,
-    porcentajeMeGusta: null, porcentajeFallos: 0, numPublicaciones: 0, precioMinimo: null, ultimaPublicacionEn: null,
+    porcentajeMeGusta: null, porcentajeFallos: 0, numPublicaciones: 0, precioPromedio: null, ultimaPublicacionEn: null,
     esCreador: false, esVip: false, identidadVerificada: false, creadoEn: Timestamp.now(),
   });
   b.set(db.doc("usernames/luna_misterio"), { uid });

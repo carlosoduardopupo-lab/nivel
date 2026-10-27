@@ -1,5 +1,5 @@
 // Carga (o actualiza) el banco de preguntas generales desde banco.json.
-// Se usan cuando un jugador falla y ya no quedan preguntas de otras fotos del creador.
+// Por ahora el juego publicado no las usa (un intento por foto); quedan listas para activarlas.
 //   npm run banco            → emuladores
 //   npm run banco -- --nube  → proyecto real
 import { createHash } from "node:crypto";

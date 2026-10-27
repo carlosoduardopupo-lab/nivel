@@ -101,6 +101,24 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "esVip",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "seguidores",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "esCreador",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "intereses",
           "arrayConfig": "CONTAINS"
         }
@@ -135,25 +153,25 @@
       ]
     },
     {
-      "collectionGroup": "bancoPreguntas",
+      "collectionGroup": "reels",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "activa",
+          "fieldPath": "estado",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "aleatorio",
-          "order": "ASCENDING"
+          "fieldPath": "creadoEn",
+          "order": "DESCENDING"
         }
       ]
     },
     {
-      "collectionGroup": "posts",
+      "collectionGroup": "reels",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "creadorId",
+          "fieldPath": "autorId",
           "order": "ASCENDING"
         },
         {
@@ -161,8 +179,22 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "oculta",
+          "fieldPath": "creadoEn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reels",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "autorId",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "creadoEn",
+          "order": "DESCENDING"
         }
       ]
     }

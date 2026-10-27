@@ -21,7 +21,8 @@ const img = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
 
 beforeAll(async () => {
   env = await initializeTestEnvironment({
-    projectId: "demo-nivel",
+    // REGLAS_PROYECTO permite probar contra emuladores ya abiertos sin borrar sus datos.
+    projectId: process.env.REGLAS_PROYECTO ?? "demo-nivel",
     firestore: { rules: readFileSync("firestore.rules", "utf8"), host: "127.0.0.1", port: 8080 },
     storage: { rules: readFileSync("storage.rules", "utf8"), host: "127.0.0.1", port: 9199 },
   });
@@ -50,6 +51,10 @@ beforeEach(async () => {
     await setDoc(doc(db, "posts", "post10"), { creadorId: CREADOR, estado: "subiendo", tipo: "foto", oculta: false });
     await setDoc(doc(db, "posts", "post11"), { creadorId: CREADOR, estado: "subiendo", tipo: "foto", oculta: false });
     await setDoc(doc(db, "posts", "video1"), { creadorId: CREADOR, estado: "subiendo", tipo: "video", oculta: false });
+    await setDoc(doc(db, "reels", "rPub"), { autorId: CREADOR, estado: "publicado", meGusta: 0 });
+    await setDoc(doc(db, "reels", "rSub"), { autorId: CREADOR, estado: "subiendo", meGusta: 0 });
+    await setDoc(doc(db, "posts", "eliminada"), { creadorId: CREADOR, orden: 3, estado: "eliminada", oculta: false });
+    await setDoc(doc(db, "users", JUGADOR, "desbloqueos", "eliminada"), { creadorId: CREADOR, via: "pago" });
     await setDoc(doc(db, "posts", "oculto"), { creadorId: CREADOR, orden: 2, estado: "aprobada", oculta: true });
     await setDoc(doc(db, "posts", POST, "preguntas", "0"), { texto: "¿?", opciones: ["a", "b", "c"], correcta: 0 });
     await setDoc(doc(db, "posts", POST, "comentarios", "c1"), { autorId: JUGADOR, texto: "hola" });
@@ -64,6 +69,24 @@ beforeEach(async () => {
 
 const como = (uid: string) => env.authenticatedContext(uid);
 const anonimo = () => env.unauthenticatedContext();
+
+describe("Firestore · publicaciones eliminadas", () => {
+  it("las lee el creador y quien las desbloqueó; nadie más", async () => {
+    await assertSucceeds(getDoc(doc(como(CREADOR).firestore(), "posts", "eliminada")));
+    await assertSucceeds(getDoc(doc(como(JUGADOR).firestore(), "posts", "eliminada")));
+    await assertFails(getDoc(doc(como(OTRO).firestore(), "posts", "eliminada")));
+  });
+});
+
+describe("Firestore · reels", () => {
+  it("los publicados los lee cualquier registrado; los que se suben, solo su autor", async () => {
+    await assertSucceeds(getDoc(doc(como(OTRO).firestore(), "reels", "rPub")));
+    await assertFails(getDoc(doc(anonimo().firestore(), "reels", "rPub")));
+    await assertFails(getDoc(doc(como(OTRO).firestore(), "reels", "rSub")));
+    await assertSucceeds(getDoc(doc(como(CREADOR).firestore(), "reels", "rSub")));
+    await assertFails(setDoc(doc(como(CREADOR).firestore(), "reels", "nuevo"), { autorId: CREADOR, estado: "publicado" }));
+  });
+});
 
 describe("Firestore · perfiles", () => {
   it("un registrado lee perfiles públicos; un anónimo no", async () => {

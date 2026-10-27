@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, where, type Timestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, orderBy, query, where, type Timestamp } from "firebase/firestore";
 import { api, errorDe, type Pregunta } from "../api";
-import { Barra, Cargando, Corazones, ImagenStorage, PildoraMonedas, TituloHoja, Avatar } from "../componentes";
+import { Barra, Cargando, Corazones, HiloComentarios, HojaCompartir, HojaVidas, ImagenStorage, PantallaCompleta, PildoraMonedas, TituloHoja, Avatar } from "../componentes";
 import { auth, db } from "../firebase";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion, vidasAhora } from "../sesion";
 import { diaDe, fmtFalta, monedasTxt, nf } from "../util";
+
+// Preguntas por foto (functions/src/reglas.ts).
+const PREGUNTAS_POR_POST = 1;
 
 type Post = {
   id: string;
@@ -34,15 +37,16 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
   const { privado } = useSesion();
   const { ir, abrirHoja, aviso } = useNav();
   const uid = auth.currentUser!.uid;
-  const [creador, setCreador] = useState<{ username: string; avatarUrl: string | null } | null>(null);
+  const [creador, setCreador] = useState<{ username: string; avatarUrl: string | null; seguidores: number } | null>(null);
+  const [sigo, setSigo] = useState<boolean | null>(null);
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [desb, setDesb] = useState<Set<string>>(new Set());
   const [intentos, setIntentos] = useState<Record<string, Intento>>({});
   const [idx, setIdx] = useState<number | null>(null);
   const [activa, setActiva] = useState<{ postId: string; p: Pregunta } | null>(null);
   const [restante, setRestante] = useState(1);
-  const [revelar, setRevelar] = useState<{ texto: string; desvanecer: boolean } | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [ampliada, setAmpliada] = useState<string | null>(null);
   const [ahora, setAhora] = useState(Date.now());
   const enviado = useRef(false);
 
@@ -53,7 +57,7 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
       getDocs(query(collection(db, "users", uid, "desbloqueos"), where("creadorId", "==", id))),
       getDocs(query(collection(db, "users", uid, "intentos"), where("creadorId", "==", id))),
     ]);
-    setCreador(u.exists() ? { username: u.get("username"), avatarUrl: u.get("avatarUrl") } : null);
+    setCreador(u.exists() ? { username: u.get("username"), avatarUrl: u.get("avatarUrl"), seguidores: u.get("seguidores") ?? 0 } : null);
     const lista = ps.docs.map((d) => ({ id: d.id, ...d.data() }) as Post);
     const abiertas = new Set(ds.docs.map((d) => d.id));
     setPosts(lista);
@@ -105,13 +109,44 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
     if (r <= 0) responder(-1);
   }, [activa, ahora, responder]);
 
-  async function empezar(id = post?.id) {
-    if (!id || ocupado) return;
+  // Al llegar a la foto que toca jugar, la pregunta se abre directamente (una vez por foto).
+  const autoIniciadas = useRef(new Set<string>());
+  useEffect(() => {
+    if (!post || id === uid || activa || ocupado || desb.has(post.id) || idx !== siguiente || vidas <= 0) return;
+    const it = intentos[post.id];
+    const abiertaAun = !!it?.pendiente && !!it.inicioEn && it.inicioEn.toMillis() + post.tiempo * 1000 + MARGEN > Date.now();
+    if (!abiertaAun && ((it?.preguntasUsadas ?? 0) >= PREGUNTAS_POR_POST || it?.ultimoDia === diaDe(new Date()))) return;
+    if (autoIniciadas.current.has(post.id)) return;
+    autoIniciadas.current.add(post.id);
+    empezar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post?.id, activa, ocupado, desb, idx, siguiente, vidas, intentos]);
+
+  useEffect(() => {
+    getDoc(doc(db, "users", uid, "siguiendo", id)).then((s) => setSigo(s.exists()), () => setSigo(false));
+  }, [uid, id]);
+
+  async function alternarSeguir() {
+    if (sigo === null) return;
+    const v = !sigo;
+    setSigo(v);
+    setCreador((c) => c && { ...c, seguidores: c.seguidores + (v ? 1 : -1) });
+    try {
+      await (v ? api.seguir({ creadorId: id }) : api.dejarDeSeguir({ creadorId: id }));
+    } catch (e) {
+      setSigo(!v);
+      setCreador((c) => c && { ...c, seguidores: c.seguidores + (v ? -1 : 1) });
+      aviso(errorDe(e).mensaje);
+    }
+  }
+
+  async function empezar() {
+    if (!post || ocupado) return;
     setOcupado(true);
     try {
-      const p = await api.empezarPregunta({ postId: id });
+      const p = await api.empezarPregunta({ postId: post.id });
       enviado.current = false;
-      setActiva({ postId: id, p });
+      setActiva({ postId: post.id, p });
     } catch (e) {
       const { codigo, mensaje } = errorDe(e);
       aviso(mensaje);
@@ -140,24 +175,14 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
     setOcupado(true);
     try {
       enviado.current = true;
-      const r = await api.pagarRespuesta({ postId: post.id });
+      await api.pagarRespuesta({ postId: post.id });
       setActiva(null);
-      setRevelar({ texto: r.respuesta, desvanecer: false });
-      setTimeout(() => setRevelar((x) => (x ? { ...x, desvanecer: true } : x)), 3000);
-      setTimeout(() => setRevelar(null), 4900);
       await recargar();
     } catch (e) {
       aviso(errorDe(e).mensaje);
     } finally {
       setOcupado(false);
     }
-  }
-
-  /** Si la foto se puede jugar ahora mismo (sin pregunta fallada hoy y con vidas). */
-  function puedeEmpezar(p: Post) {
-    const it = intentos[p.id];
-    if (it?.pendiente) return true;
-    return it?.ultimoDia !== diaDe(new Date()) && vidasAhora(privado) > 0;
   }
 
   if (!posts || idx === null) return <><Barra titulo="" /><Cargando /></>;
@@ -170,6 +195,7 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
   const pendienteAbierta = !!intento?.pendiente && !!intento.inicioEn && intento.inicioEn.toMillis() + post.tiempo * 1000 + MARGEN > ahora;
   const usadas = intento?.preguntasUsadas ?? 0;
   const falloHoy = !pendienteAbierta && intento?.ultimoDia === hoy;
+  const sinPreguntas = !pendienteAbierta && usadas >= PREGUNTAS_POR_POST;
   const vuelvenEn = privado?.vidasVuelvenEn?.toMillis() ?? 0;
   const todoHecho = siguiente === -1;
 
@@ -184,6 +210,9 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
         {activa.p.opciones.map((o, i) => <button key={i} className="opt" onClick={() => responder(i)}>{o}</button>)}
       </>
     );
+  } else if (sinPreguntas) {
+    const fallada = intento?.resultado === "tiempo" ? "Se acabó el tiempo" : intento?.resultado === "fallo" ? "Respuesta incorrecta" : "Ya usaste tu intento";
+    centro = <><p style={{ textAlign: "center", fontWeight: 700, fontSize: 16, color: "#FFB1AE" }}><Ic n="x" /> {fallada}</p></>;
   } else if (falloHoy) {
     centro = (
       <>
@@ -198,17 +227,15 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
       <>
         <p style={{ textAlign: "center", fontWeight: 700, fontSize: 16 }}>Te quedaste sin vidas</p>
         <p style={{ textAlign: "center", fontSize: 13, opacity: 0.85, marginTop: 4 }}>Vuelven en <b style={{ fontVariantNumeric: "tabular-nums" }}>{fmtFalta(vuelvenEn - ahora)}</b></p>
-        <button className="btn soft" style={{ marginTop: 12, height: 44, background: "rgba(255,255,255,.14)", color: "#fff" }} onClick={() => ir({ n: "tienda" })}>Conseguir monedas</button>
+        <button className="btn grad" style={{ marginTop: 12, height: 44 }} onClick={() => abrirHoja(<HojaVidas />)}><Ic n="share" /> Invita a un amigo y recupera 3 vidas</button>
+        <button className="btn soft" style={{ marginTop: 8, height: 44, background: "rgba(255,255,255,.14)", color: "#fff" }} onClick={() => ir({ n: "tienda" })}>Conseguir monedas</button>
       </>
     );
   } else {
     centro = (
       <>
-        <p className="q" style={{ textAlign: "center" }}>{pendienteAbierta ? "Tienes una pregunta abierta" : usadas ? "Nueva pregunta" : "¿Lo conoces?"}</p>
-        <p style={{ textAlign: "center", fontSize: 13, opacity: 0.85, margin: "4px 0 12px" }}>
-          {pendienteAbierta ? "Corre, el tiempo sigue contando." : `Tendrás ${post.tiempo} segundos. Si fallas, gastas una vida.`}
-        </p>
-        <button className="opt" onClick={() => empezar()} disabled={ocupado}>{ocupado ? "Un momento…" : pendienteAbierta ? "Volver a la pregunta" : "Empezar"}</button>
+        {/* La pregunta empieza sola; el botón solo queda si no pudo arrancar (p. ej. sin conexión). */}
+        <button className="opt" onClick={empezar} disabled={ocupado}>{ocupado ? "Cargando pregunta…" : "Responder"}</button>
       </>
     );
   }
@@ -216,13 +243,20 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
   return (
     <>
       <Barra titulo={"@" + creador.username} derecha={<><Corazones vidas={vidas} /> <PildoraMonedas /></>} />
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <Avatar url={creador.avatarUrl} tam={36} />
+        <span style={{ flex: 1, fontSize: 13, color: "var(--muted)" }}>{nf(creador.seguidores)} {creador.seguidores === 1 ? "seguidor" : "seguidores"}</span>
+        <button className="iconbtn" aria-label={`Reels de @${creador.username}`} onClick={() => ir({ n: "reels", autorId: id })}><Ic n="film" /></button>
+        <button className="iconbtn" aria-label="Compartir" onClick={() => abrirHoja(<HojaCompartir username={creador.username} propio={false} />)}><Ic n="share" /></button>
+        <button className={`follow ${sigo ? "on" : ""}`} onClick={alternarSeguir} disabled={sigo === null}>{sigo ? "Siguiendo" : "Seguir"}</button>
+      </div>
       <div className="reel">
         {posts.map((p, i) => {
           const ok = desb.has(p.id);
           const bloqueada = !ok && i !== siguiente;
           return (
             <button key={p.id} className={`thumb ${i === idx ? "cur" : ""}`} aria-label={`Foto ${i + 1}${ok ? "" : " bloqueada"}`} disabled={bloqueada || !!activa}
-              style={bloqueada ? { cursor: "default" } : undefined} onClick={() => { setIdx(i); setRevelar(null); }}>
+              style={bloqueada ? { cursor: "default" } : undefined} onClick={() => setIdx(i)}>
               <div style={{ width: "100%", height: "100%" }}><ImagenStorage ruta={ok ? (p.tipo === "video" ? p.rutaBorrosa : p.rutaOriginal) : p.rutaBorrosa} /></div>
               {!ok && <span className="lk"><Ic n="lock" /></span>}
             </button>
@@ -234,21 +268,12 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
         <button className="dots" aria-label="Reportar esta foto" onClick={() => abrirHoja(<HojaReporte postId={post.id} />)}><Ic n="dots" /></button>
         {abierta ? (
           <>
-            <div className="art"><ImagenStorage ruta={post.rutaOriginal} video={post.tipo === "video"} controles={post.tipo === "video"} /></div>
-            {revelar && (
-              <div className="reveal" style={{ opacity: revelar.desvanecer ? 0 : 1 }}>
-                <p style={{ fontSize: 12, opacity: 0.8 }}>La respuesta era</p>
-                <p style={{ fontFamily: "var(--f-display)", fontSize: 22, fontWeight: 700 }}>{revelar.texto}</p>
-              </div>
-            )}
+            {/* Las fotos desbloqueadas se amplían tocándolas (los videos ya traen su botón de pantalla completa). */}
+            <div className="art" onClick={post.tipo === "foto" && post.rutaOriginal ? () => setAmpliada(post.rutaOriginal) : undefined} style={post.tipo === "foto" ? { cursor: "zoom-in" } : undefined}>
+              <ImagenStorage ruta={post.rutaOriginal} video={post.tipo === "video"} controles={post.tipo === "video"} />
+            </div>
             <Lateral post={post} onComentarios={() => abrirHoja(<HojaComentarios postId={post.id} />)}
-              siguiente={idx + 1 < posts.length && (desb.has(posts[idx + 1].id) || idx + 1 === siguiente) ? () => {
-                const sig = posts[idx + 1];
-                setIdx(idx + 1);
-                setRevelar(null);
-                // La flecha lleva directo a la pregunta de la siguiente foto, sin la pantalla de "¿Lo conoces?".
-                if (!desb.has(sig.id) && puedeEmpezar(sig)) empezar(sig.id);
-              } : undefined} />
+              siguiente={idx + 1 < posts.length && (desb.has(posts[idx + 1].id) || idx + 1 === siguiente) ? () => setIdx(idx + 1) : undefined} />
           </>
         ) : (
           <>
@@ -261,6 +286,11 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
         )}
       </div>
 
+      {ampliada && (() => {
+        // Todas las fotos desbloqueadas de este creador, en orden.
+        const rutas = posts.filter((p) => desb.has(p.id) && p.tipo === "foto" && p.rutaOriginal).map((p) => p.rutaOriginal);
+        return <PantallaCompleta rutas={rutas} inicio={rutas.indexOf(ampliada)} alCerrar={() => setAmpliada(null)} />;
+      })()}
       <div style={{ marginTop: 12 }}>
         {abierta && todoHecho && idx === posts.length - 1 ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 14, background: "var(--surface2)" }}>
@@ -310,53 +340,12 @@ function Lateral({ post, onComentarios, siguiente }: { post: Post; onComentarios
   );
 }
 
-type Comentario = { id: string; username: string; texto: string };
-
 function HojaComentarios({ postId }: { postId: string }) {
-  const [lista, setLista] = useState<Comentario[] | null>(null);
-  const [texto, setTexto] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
-
-  const cargar = useCallback(async () => {
-    const s = await getDocs(query(collection(db, "posts", postId, "comentarios"), orderBy("creadoEn", "desc"), limit(50)));
-    setLista(s.docs.map((d) => ({ id: d.id, username: d.get("username"), texto: d.get("texto") })));
-  }, [postId]);
-  useEffect(() => { cargar().catch(() => setLista([])); }, [cargar]);
-
-  async function enviar() {
-    const v = texto.trim();
-    if (!v) return setError("Escribe algo antes de enviar.");
-    setEnviando(true);
-    try {
-      await api.comentar({ postId, texto: v });
-      setTexto("");
-      setError(null);
-      await cargar();
-    } catch (e) {
-      setError(errorDe(e).mensaje);
-    } finally {
-      setEnviando(false);
-    }
-  }
-
   return (
     <>
       <TituloHoja>Comentarios</TituloHoja>
       <p className="sub" style={{ margin: "0 0 10px" }}>Solo los ve quien desbloqueó esta foto.</p>
-      <div>
-        {lista === null ? <p className="sub">Cargando…</p> : lista.length ? lista.map((c) => (
-          <div className="lrow" key={c.id}>
-            <Avatar url={null} tam={34} />
-            <div><b style={{ fontSize: 13 }}>@{c.username}</b><p style={{ fontSize: 14 }}>{c.texto}</p></div>
-          </div>
-        )) : <p style={{ color: "var(--muted)", fontSize: 14, padding: "14px 0" }}>Aún no hay comentarios. Sé el primero.</p>}
-      </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        <div className="field" style={{ flex: 1 }}><input maxLength={140} placeholder="Escribe un comentario" aria-label="Comentario" value={texto} onChange={(e) => setTexto(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} /></div>
-        <button className="iconbtn" style={{ background: "var(--fg)", color: "var(--bg)", width: 48, height: 48 }} aria-label="Enviar" onClick={enviar} disabled={enviando}><Ic n="arrow" /></button>
-      </div>
-      {error && <p style={{ fontSize: 12, color: "var(--rojo)", marginTop: 6 }}>{error}</p>}
+      <HiloComentarios postId={postId} />
     </>
   );
 }

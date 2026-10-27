@@ -37,6 +37,24 @@ service firebase.storage {
       allow write: if false;
     }
 
+    // Reels: video público para registrados. El autor lo sube una vez tras crearReel.
+    match /reels/{autorId}/{reelId} {
+      allow read: if registrado();
+      allow create: if registrado()
+        && request.auth.uid == autorId
+        && resource == null
+        && request.resource.size < 100 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*')
+        && firestore.get(/databases/(default)/documents/reels/$(reelId)).data.autorId == autorId
+        && firestore.get(/databases/(default)/documents/reels/$(reelId)).data.estado == 'subiendo';
+      allow update, delete: if false;
+    }
+
+    match /portadas-reels/{archivo} {
+      allow read: if registrado();
+      allow write: if false;
+    }
+
     match /avatares/{archivo} {
       allow read: if registrado();
       allow write: if registrado()

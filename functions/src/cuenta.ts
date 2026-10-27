@@ -9,6 +9,8 @@ export const AJUSTES_POR_DEFECTO = {
   comentarios: false,
   comentar: true,
   sugeridos: true,
+  // Salir con mi foto nítida en el escaparate público de /descargar (si estoy entre los populares).
+  escaparate: true,
 };
 
 function normalizarUsername(v: unknown): string {
@@ -19,7 +21,7 @@ function normalizarUsername(v: unknown): string {
   return u;
 }
 
-const RESERVADOS = new Set(["admin", "nivel", "soporte", "moderador", "root"]);
+const RESERVADOS = new Set(["admin", "nivel", "blurry", "soporte", "moderador", "root"]);
 
 export function validarIntereses(v: unknown): string[] {
   if (!Array.isArray(v)) fallo("dato-invalido", "Elige tus intereses.", "invalid-argument");
@@ -41,6 +43,8 @@ export type DatosRegistro = {
   fechaNacimiento: unknown;
   intereses: unknown;
   aceptaTerminos: unknown;
+  /** Nombre de usuario de quien compartió el enlace (opcional). */
+  referidoPor?: unknown;
 };
 
 export async function registrar(uid: string, correo: string | null, datos: DatosRegistro, ahora = new Date()): Promise<{ username: string }> {
@@ -57,9 +61,17 @@ export async function registrar(uid: string, correo: string | null, datos: Datos
   await db().runTransaction(async (tx) => {
     const refUser = db().doc(`users/${uid}`);
     const refNombre = db().doc(`usernames/${username}`);
-    const [user, nombre] = await Promise.all([tx.get(refUser), tx.get(refNombre)]);
+    const ref = typeof datos.referidoPor === "string" ? datos.referidoPor.trim().toLowerCase().replace(/^@/, "") : "";
+    const [user, nombre, invito] = await Promise.all([
+      tx.get(refUser),
+      tx.get(refNombre),
+      ref && USERNAME_RE.test(ref) ? tx.get(db().doc(`usernames/${ref}`)) : null,
+    ]);
     if (user.exists) fallo("ya-registrado", "Tu cuenta ya está registrada.", "already-exists");
     if (nombre.exists) fallo("username-ocupado", "Ese nombre ya está en uso.", "already-exists");
+    // Referido: se guarda quién invitó (un código inválido o propio se ignora). Los premios
+    // se dan cuando el nuevo juega su primera foto (referidos.ts).
+    const invitoUid: string | null = invito?.exists && invito.get("uid") !== uid ? invito.get("uid") : null;
     const t = Timestamp.fromDate(ahora);
     tx.set(refNombre, { uid });
     tx.set(refUser, {
@@ -75,7 +87,7 @@ export async function registrar(uid: string, correo: string | null, datos: Datos
       porcentajeMeGusta: null,
       porcentajeFallos: 0,
       numPublicaciones: 0,
-      precioMinimo: null,
+      precioPromedio: null,
       ultimaPublicacionEn: null,
       esCreador: false,
       esVip: false,
@@ -95,7 +107,11 @@ export async function registrar(uid: string, correo: string | null, datos: Datos
       gananciasEnEspera: 0,
       stripeCuentaId: null,
       ajustes: AJUSTES_POR_DEFECTO,
+      referidoPor: invitoUid,
+      referidoContado: false,
+      referidos: 0,
     });
+    if (invitoUid) tx.set(db().doc(`private/${invitoUid}/referidos/${uid}`), { estado: "pendiente", creadoEn: t });
   });
   return { username };
 }

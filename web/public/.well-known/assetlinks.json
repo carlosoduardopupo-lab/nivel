@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.blurry.app",
+      "sha256_cert_fingerprints": ["61:E6:51:7B:93:46:1C:2D:5D:D2:8D:3B:3D:69:DA:E9:4A:66:FD:01:E5:75:FF:61:F8:D4:BE:58:67:F3:D4:27"]
+    }
+  }
+]

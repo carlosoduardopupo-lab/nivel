@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { Barra, Corazones } from "../componentes";
+import { AvisoFasePrueba, Barra, Corazones, TarjetaInvitar } from "../componentes";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion, vidasAhora } from "../sesion";
-import { comisionRetiro, dinero, fmtFalta, nf } from "../util";
+import { comisionRetiro, dinero, FASE_PRUEBA, fmtFalta, nf } from "../util";
 
 // Los paquetes reales se definen en el servidor (Fase 3). Aquí solo se muestran.
+// x = % de monedas extra por dólar respecto al paquete de 150 por $1.99 (redondeado hacia abajo).
 const PAQUETES = [
   { id: "p150", m: 150, p: 1.99, x: 0 },
-  { id: "p550", m: 550, p: 4.99, x: 10 },
-  { id: "p1150", m: 1150, p: 9.99, x: 15, tag: "MÁS POPULAR", col: "var(--rosa)" },
-  { id: "p2400", m: 2400, p: 19.99, x: 20, tag: "MEJOR PRECIO", col: "var(--verde)" },
+  { id: "p550", m: 550, p: 4.99, x: 46 },
+  { id: "p1150", m: 1150, p: 9.99, x: 52, tag: "MÁS POPULAR", col: "var(--rosa)" },
+  { id: "p2400", m: 2400, p: 19.99, x: 59, tag: "MEJOR PRECIO", col: "var(--verde)" },
 ];
 
 export function Tienda() {
@@ -46,11 +47,16 @@ export function Tienda() {
           </button>
         ))}
       </div>
+      <TarjetaInvitar />
       <p style={{ textAlign: "center", fontSize: 12, color: "var(--muted)", marginTop: 16 }}><Ic n="lock" /> Pago seguro · Las monedas no caducan</p>
-      <div style={{ height: 70 }} />
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "12px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))", background: "var(--bg)" }}>
-        <button className="btn grad" onClick={() => aviso("La compra con Stripe llega en la Fase 3")}>Comprar {nf(k.m)} monedas · ${k.p.toFixed(2)}</button>
-      </div>
+      {FASE_PRUEBA ? <AvisoFasePrueba /> : (
+        <>
+          <div style={{ height: 70 }} />
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "12px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))", background: "var(--bg)" }}>
+            <button className="btn grad" onClick={() => aviso("La compra con Stripe llega en la Fase 3")}>Comprar {nf(k.m)} monedas · ${k.p.toFixed(2)}</button>
+          </div>
+        </>
+      )}
     </>
   );
 }

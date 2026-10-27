@@ -1,9 +1,13 @@
 // Constantes de REGLAS.md. El servidor es la única fuente de verdad.
 
 export const VIDAS_POR_DIA = 3;
-// Monedas de bienvenida: sirven para ver fotos, pero no generan pago al creador.
-export const MONEDAS_BIENVENIDA = 100;
 export const BLOQUEO_MS = 24 * 60 * 60 * 1000;
+export const PREGUNTAS_POR_POST = 1;
+// Mientras sea true, toda publicación se aprueba sola al terminar de procesarse (sin revisión manual).
+export const APROBACION_AUTOMATICA = true;
+// Fase de prueba: no hay compras ni retiros. Las monedas que se gastan en una foto se le
+// suman al creador (como monedas de regalo) para probar el sistema; no generan dinero.
+export const FASE_PRUEBA = true;
 export const MARGEN_RESPUESTA_MS = 2000;
 
 export const PRECIO_MIN_FOTO = 1;
@@ -12,8 +16,18 @@ export const PRECIO_MAX_NORMAL = 20;
 export const PRECIO_MAX_VIP = 100;
 export const VIDEO_MAX_SEGUNDOS = 30;
 
+// Reels (gratis, para darse a conocer).
+export const REEL_MAX_SEGUNDOS = 60;
+export const MAX_TEXTO_REEL = 150;
+
 // Dinero en milésimas de dólar.
 export const MILESIMAS_POR_MONEDA = 5;
+// Regalo al crear la cuenta: desbloquean fotos, pero no se le pagan al creador.
+export const MONEDAS_BIENVENIDA = 100;
+// Referidos: cada amigo nuevo que se registra con tu código te recarga las 3 vidas, y al
+// registrarse el tercero ganas 500 monedas de regalo (una sola vez).
+export const MONEDAS_POR_REFERIDO = [0, 0, 500];
+export const MAX_MONEDAS_REFERIDOS = 500;
 export const DIAS_EN_ESPERA = 7;
 export const RETIRO_MINIMO_MILESIMAS = 50_000;
 
@@ -33,6 +47,11 @@ export function tiempoDe(precio: number): number {
 
 export function precioMaximo(esVip: boolean): number {
   return esVip ? PRECIO_MAX_VIP : PRECIO_MAX_NORMAL;
+}
+
+/** Precio promedio de las publicaciones de un creador (redondeado), o null si no tiene. */
+export function precioPromedio(precios: number[]): number | null {
+  return precios.length ? Math.round(precios.reduce((a, b) => a + b, 0) / precios.length) : null;
 }
 
 /** Comisión de retiro en milésimas: $2 + 0.25% + $0.25. */

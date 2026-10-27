@@ -10,72 +10,53 @@
     {
       "source": "functions",
       "codebase": "default",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run build"
-      ]
+      "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
     }
   ],
-  "hosting": {
+  "hosting": [
+  {
+    "target": "app",
     "public": "web/dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
+    "ignore": ["firebase.json", "**/node_modules/**"],
     "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
+      { "source": "/api/escaparate", "function": { "functionId": "escaparatePublico", "region": "us-central1" } },
+      { "source": "/descargar", "destination": "/descargar/index.html" },
+      { "source": "/download", "destination": "/descargar/index.html" },
+      { "source": "/terminos", "destination": "/terminos/index.html" },
+      { "source": "/privacidad", "destination": "/privacidad/index.html" },
+      { "source": "**", "destination": "/index.html" }
     ],
     "headers": [
-      {
-        "source": "/assets/**",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
-      },
-      {
-        "source": "/index.html",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          }
-        ]
-      }
+      { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+      { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+      { "source": "/descargar/**", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+      { "source": "/descargar", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+      { "source": "/assets/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
+      { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+      { "source": "/.well-known/assetlinks.json", "headers": [{ "key": "Content-Type", "value": "application/json" }] },
+      { "source": "/blurry.apk", "headers": [{ "key": "Content-Type", "value": "application/vnd.android.package-archive" }] }
     ]
   },
+  {
+    "target": "juego",
+    "public": "hosting-juego",
+    "ignore": ["firebase.json", "**/node_modules/**"],
+    "redirects": [
+      { "source": "/download", "destination": "https://blurry-78f0d.web.app/descargar/", "type": 302 },
+      { "source": "/descargar", "destination": "https://blurry-78f0d.web.app/descargar/", "type": 302 },
+      { "source": "/", "destination": "https://blurry-78f0d.web.app/descargar/", "type": 302 },
+      { "source": "/app", "destination": "https://blurry-78f0d.web.app/", "type": 302 }
+    ]
+  }
+  ],
   "emulators": {
-    "auth": {
-      "port": 9099
-    },
-    "functions": {
-      "port": 5001
-    },
-    "firestore": {
-      "port": 8080
-    },
-    "storage": {
-      "port": 9199
-    },
-    "hosting": {
-      "port": 5000
-    },
-    "ui": {
-      "enabled": true,
-      "port": 4000
-    },
+    "auth": { "port": 9099 },
+    "functions": { "port": 5001 },
+    "firestore": { "port": 8080 },
+    "storage": { "port": 9199 },
+    "hosting": { "port": 5000 },
+    "ui": { "enabled": true, "port": 4000 },
     "singleProjectMode": true
   }
 }

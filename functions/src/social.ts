@@ -1,8 +1,8 @@
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Timestamp, type DocumentReference } from "firebase-admin/firestore";
 import { db, fallo, texto } from "./comun.js";
 import { MAX_COMENTARIO, MOTIVOS_REPORTE, REPORTES_PARA_OCULTAR } from "./reglas.js";
 
-async function exigirPerfil(uid: string): Promise<string> {
+export async function exigirPerfil(uid: string): Promise<string> {
   const snap = await db().doc(`users/${uid}`).get();
   if (!snap.exists) fallo("sin-perfil", "Termina tu registro primero.");
   return snap.get("username") as string;
@@ -55,7 +55,12 @@ export async function darMeGusta(uid: string, datos: { postId: string; valor: bo
   return { meGusta: valor };
 }
 
-export async function comentar(uid: string, datos: { postId: string; texto: unknown }): Promise<{ id: string }> {
+/**
+ * Comenta en una foto, o responde a un comentario (`respondeA`). Las respuestas
+ * cuelgan siempre del comentario principal (un solo nivel) y guardan a quién
+ * se responde para mostrar "@usuario".
+ */
+export async function comentar(uid: string, datos: { postId: string; texto: unknown; respondeA?: string }): Promise<{ id: string }> {
   const { postId } = datos;
   const t = texto(datos.texto, "el comentario", MAX_COMENTARIO);
   const username = await exigirPerfil(uid);
@@ -69,10 +74,21 @@ export async function comentar(uid: string, datos: { postId: string; texto: unkn
     const priv = await db().doc(`private/${creadorId}`).get();
     if (priv.get("ajustes.comentar") === false) fallo("comentarios-cerrados", "Este creador no permite comentarios.");
   }
-  const ref = refPost.collection("comentarios").doc();
+  return escribirComentario(refPost, uid, username, t, datos.respondeA);
+}
+
+/** Guarda un comentario (o respuesta) en `{padre}/comentarios` y sube su contador. Lo usan fotos y reels. */
+export async function escribirComentario(refPadre: DocumentReference, uid: string, username: string, t: string, respondeA?: string): Promise<{ id: string }> {
+  let respuesta: { respondeA: string; respondeAUsername: string } | null = null;
+  if (respondeA) {
+    const padre = await refPadre.collection("comentarios").doc(respondeA).get();
+    if (!padre.exists) fallo("no-existe", "Ese comentario ya no existe.", "not-found");
+    respuesta = { respondeA: padre.get("respondeA") ?? padre.id, respondeAUsername: padre.get("username") };
+  }
+  const ref = refPadre.collection("comentarios").doc();
   const lote = db().batch();
-  lote.set(ref, { autorId: uid, username, texto: t, creadoEn: Timestamp.now() });
-  lote.update(refPost, { comentarios: FieldValue.increment(1) });
+  lote.set(ref, { autorId: uid, username, texto: t, creadoEn: Timestamp.now(), ...respuesta });
+  lote.update(refPadre, { comentarios: FieldValue.increment(1) });
   await lote.commit();
   return { id: ref.id };
 }

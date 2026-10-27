@@ -1,0 +1,13 @@
+/* Estilo de las páginas legales (/terminos, /privacidad). */
+:root{--bg:#130F12;--surface:#1C171A;--fg:#F4EEF1;--muted:#A8999F;--line:#3A3036;--rosa:#D4537E}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+main{max-width:720px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-left,0px)) 60px}
+a{color:#EF9F27}
+.volver{display:inline-block;margin-bottom:18px;text-decoration:none;font-weight:700;color:var(--fg)}
+h1{font-size:30px;line-height:1.15;margin:0 0 6px}
+.fecha{color:var(--muted);font-size:14px;margin:0 0 26px}
+h2{font-size:18px;margin:28px 0 8px;padding-top:18px;border-top:1px solid var(--line)}
+p,li{font-size:15px;color:#E4DCE0}
+ul{padding-left:20px}
+li{margin:6px 0}

@@ -30,6 +30,9 @@ export type Privado = {
   gananciasDisponibles: number;
   gananciasEnEspera: number;
   ajustes: Record<string, boolean>;
+  referidos?: number;
+  monedasGanadas?: number;
+  monedasReferidos?: number;
 };
 
 type Sesion = {
