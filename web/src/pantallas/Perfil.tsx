@@ -38,7 +38,7 @@ export function Perfil() {
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, paddingTop: 6 }}>
-        <Avatar url={perfil.avatarUrl} tam={88} />
+        <Avatar url={perfil.avatarUrl} tam={88} ampliable />
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontFamily: "var(--f-display)", fontWeight: 700, fontSize: 18 }}>@{perfil.username}</span>
           <button className="iconbtn" style={{ width: 30, height: 30, color: "var(--muted)" }} onClick={() => abrirHoja(<EditarPerfil />)} aria-label="Editar nombre de usuario y foto"><Ic n="pencil" /></button>

@@ -255,7 +255,7 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
     <>
       <Barra titulo={"@" + creador.username} derecha={<><Corazones vidas={vidas} /> <PildoraMonedas /></>} />
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-        <Avatar url={creador.avatarUrl} tam={36} />
+        <Avatar url={creador.avatarUrl} tam={36} ampliable />
         <span style={{ flex: 1, fontSize: 13, color: "var(--muted)" }}>{nf(creador.seguidores)} {creador.seguidores === 1 ? "seguidor" : "seguidores"}</span>
         <button className="iconbtn" aria-label={`Reels de @${creador.username}`} onClick={() => ir({ n: "reels", autorId: id })}><Ic n="film" /></button>
         <button className="iconbtn" aria-label="Compartir" onClick={() => abrirHoja(<HojaCompartir username={creador.username} propio={false} />)}><Ic n="share" /></button>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { collection, doc, getDoc, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { api, errorDe } from "./api";
 import { art } from "./arte";
@@ -48,11 +49,35 @@ export function Arte({ tema = "chica", fondo = "#F2ECEF" }: { tema?: string; fon
   return <div style={{ width: "100%", height: "100%" }} dangerouslySetInnerHTML={{ __html: art(tema, fondo) }} />;
 }
 
-export function Avatar({ url, tam, borde }: { url: string | null | undefined; tam: number; borde?: string }) {
+export function Avatar({ url, tam, borde, ampliable = false }: { url: string | null | undefined; tam: number; borde?: string; ampliable?: boolean }) {
+  const [grande, setGrande] = useState(false);
+  const puede = ampliable && !!url;
   return (
-    <div className="ava" style={{ width: tam, height: tam, border: borde, background: "var(--surface2)" }}>
-      {url ? <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Arte fondo="#FAC775" />}
-    </div>
+    <>
+      <div className="ava" style={{ width: tam, height: tam, border: borde, background: "var(--surface2)", cursor: puede ? "zoom-in" : undefined }}
+        {...(puede ? { role: "button", tabIndex: 0, "aria-label": "Ver foto de perfil", onClick: () => setGrande(true), onKeyDown: (e: React.KeyboardEvent) => e.key === "Enter" && setGrande(true) } : {})}>
+        {url ? <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Arte fondo="#FAC775" />}
+      </div>
+      {grande && url && <VisorFoto url={url} cerrar={() => setGrande(false)} />}
+    </>
+  );
+}
+
+/** Foto a pantalla completa sobre todo; se cierra tocando, con la X o con Escape. */
+function VisorFoto({ url, cerrar }: { url: string; cerrar: () => void }) {
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => e.key === "Escape" && cerrar();
+    addEventListener("keydown", tecla);
+    return () => removeEventListener("keydown", tecla);
+  }, [cerrar]);
+  return createPortal(
+    <div role="dialog" aria-label="Foto de perfil" onClick={cerrar}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.94)", display: "flex", alignItems: "center", justifyContent: "center", animation: "pop .2s ease" }}>
+      <img src={url} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+      <button className="iconbtn" aria-label="Cerrar" onClick={cerrar}
+        style={{ position: "absolute", top: "calc(env(safe-area-inset-top) + 12px)", right: 12, color: "#fff", background: "rgba(255,255,255,.14)", borderRadius: "50%" }}><Ic n="x" /></button>
+    </div>,
+    document.body,
   );
 }
 
