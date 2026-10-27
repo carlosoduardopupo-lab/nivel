@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Descarga Blurry</title>
+  <meta name="description" content="¿Qué hay detrás de lo borroso? Adivina y lo sabrás. Descarga la app para Android o instálala desde el navegador." />
+  <meta name="theme-color" content="#130F12" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icono.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta property="og:title" content="Blurry · ¿Qué hay detrás de lo borroso?" />
+  <meta property="og:description" content="Adivina y lo sabrás. Descarga la app gratis y llévate 100 monedas de bienvenida." />
+  <meta property="og:image" content="https://blurry-78f0d.web.app/icono-512.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" />
+  <style>
+    :root{--bg:#130F12;--surface:#1C171A;--surface2:#2A2227;--fg:#F4EEF1;--muted:#A8999F;--line:#3A3036;--rosa:#D4537E;--naranja:#EF9F27;--verde:#3FBF92;--grad:linear-gradient(135deg,var(--rosa),var(--naranja))}
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--fg);font-family:Figtree,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    a{color:inherit}
+    .wrap{max-width:980px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-left,0px))}
+    header{display:flex;align-items:center;gap:10px;padding:18px 0}
+    .logo{width:40px;height:40px;border-radius:12px;background:var(--grad);display:flex;align-items:center;justify-content:center}
+    .marca{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:26px;letter-spacing:-.01em}
+    header .jugar{margin-left:auto;font-weight:700;font-size:14px;text-decoration:none;padding:8px 14px;border-radius:999px;background:var(--surface2)}
+    .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:24px 0 40px}
+    h1{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(40px,7vw,66px);line-height:1;margin:0;letter-spacing:-.02em}
+    h1 span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .lema{font-size:19px;color:var(--muted);margin:14px 0 26px}
+    .botones{display:flex;flex-direction:column;gap:10px;max-width:420px}
+    .btn{display:flex;align-items:center;justify-content:center;gap:10px;height:56px;border-radius:16px;font-weight:700;font-size:16px;text-decoration:none;border:0;cursor:pointer;font-family:inherit;color:var(--fg)}
+    .btn.grad{background:var(--grad);color:#fff;box-shadow:0 10px 28px rgba(212,83,126,.35)}
+    .btn.soft{background:var(--surface2)}
+    .btn small{display:block;font-weight:500;font-size:12px;opacity:.85}
+    .btn .t{text-align:left;line-height:1.15}
+    .regalo{display:inline-flex;align-items:center;gap:8px;text-align:left;line-height:1.3;margin:-10px 0 22px;padding:8px 14px 8px 8px;border-radius:999px;background:rgba(242,179,61,.14);border:1px solid rgba(242,179,61,.35);font-size:14px}
+    .regalo b{color:#F2B33D}
+    .moneda{flex:none;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#F7CF6B,#F2B33D);color:#4A2F02;font-weight:800;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
+    .nota{font-size:13px;color:var(--muted);margin-top:12px;line-height:1.5;max-width:420px}
+    .oculto{display:none!important}
+    /* Teléfono con la demo */
+    .telefono{position:relative;width:min(300px,78vw);aspect-ratio:9/18.5;margin:0 auto;border-radius:38px;padding:10px;background:#0b080a;border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 6px #201a1e}
+    .pantalla{position:relative;height:100%;border-radius:30px;overflow:hidden;background:#000}
+    .foto{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(18px);transform:scale(1.15);transition:filter 1.1s ease,transform 1.1s ease}
+    .foto.nitida{filter:none;transform:none}
+    .capa{position:absolute;left:0;right:0;bottom:0;padding:16px;background:linear-gradient(to top,rgba(0,0,0,.85),transparent);transition:opacity .4s}
+    .capa.fuera{opacity:0}
+    .pregunta{font-weight:700;font-size:16px;margin-bottom:8px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+    .reloj{height:5px;border-radius:3px;background:rgba(255,255,255,.25);overflow:hidden;margin-bottom:10px}
+    .reloj i{display:block;height:100%;width:100%;background:var(--grad)}
+    .op{display:block;width:100%;margin-top:7px;padding:11px 12px;border-radius:12px;background:rgba(255,255,255,.14);backdrop-filter:blur(6px);font-weight:600;font-size:14px;text-align:left;transition:background .25s,transform .25s}
+    .op.ok{background:var(--verde);color:#08291c;transform:scale(1.03)}
+    .barra-app{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:14px 14px;font-weight:700;font-size:13px;z-index:2}
+    .vidas{color:#F06560;letter-spacing:2px}
+    .acierto{position:absolute;top:44%;left:50%;transform:translate(-50%,-50%) scale(.6);opacity:0;background:var(--verde);color:#08291c;font-weight:800;padding:10px 18px;border-radius:999px;transition:all .35s;white-space:nowrap}
+    .acierto.si{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    .telefonos{display:flex;gap:22px;justify-content:center;align-items:flex-start}
+    .telefonos .telefono{margin:0;flex:none}
+    .feed{background:var(--bg);display:flex;flex-direction:column}
+    .feed-top{display:flex;justify-content:space-between;align-items:center;padding:16px 14px 8px}
+    .feed-top b{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:22px}
+    .chips{display:flex;gap:6px;padding:0 12px 10px;overflow:hidden}
+    .chips span{flex:none;padding:6px 10px;border-radius:999px;background:var(--surface2);font-size:11px;font-weight:600}
+    .chips .on{background:var(--fg);color:var(--bg)}
+    .lista{position:relative;flex:1;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,transparent,#000 4%,#000 92%,transparent)}
+    .rueda{display:flex;flex-direction:column;gap:12px;padding:0 10px;animation:rueda var(--dur,30s) linear infinite}
+    .lista:hover .rueda{animation-play-state:paused}
+    @keyframes rueda{to{transform:translateY(calc(-50% - 6px))}}
+    .tarjeta{display:block;flex:none;border-radius:16px;overflow:hidden;background:var(--surface);border:1px solid var(--line);text-decoration:none}
+    .tarjeta .img{position:relative;height:118px;background:var(--surface2) center/cover}
+    .tarjeta .img.sin{background:linear-gradient(135deg,#F4C0D1,#FAC775)}
+    .moneda.chica{width:14px;height:14px;font-size:9px}
+    .tarjeta .precio{position:absolute;right:8px;top:8px;display:inline-flex;align-items:center;gap:4px;background:rgba(20,14,18,.62);color:#fff;font-size:11px;font-weight:700;padding:4px 8px;border-radius:999px}
+    .tarjeta .cuerpo{padding:9px 11px 11px}
+    .tarjeta .fila{display:flex;align-items:center;gap:8px}
+    .tarjeta .fila b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:"Bricolage Grotesque",sans-serif;font-size:14px}
+    .seguir{font-size:10px;font-weight:700;background:var(--fg);color:var(--bg);padding:5px 10px;border-radius:999px}
+    .meta{display:flex;align-items:center;gap:6px;margin:6px 0 8px;color:var(--muted);font-size:10.5px}
+    .dif{font-weight:700;padding:2px 7px;border-radius:999px;font-size:10px}
+    .barra{height:4px;border-radius:2px;background:var(--surface2)}
+    @media (max-width:760px){.telefonos{flex-direction:column;align-items:center;gap:26px}}
+    @media (min-width:761px){.hero{grid-template-columns:1fr auto}.telefonos .telefono{width:250px}}
+    /* Pasos */
+    h2{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:30px;margin:0 0 16px}
+    .pasos{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding-bottom:40px}
+    .paso{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px}
+    .paso b{display:block;font-size:17px;margin:8px 0 4px}
+    .paso p{margin:0;color:var(--muted);font-size:14px;line-height:1.45}
+    .num{width:30px;height:30px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
+    .creadores{position:relative;overflow:hidden;border-radius:24px;padding:26px 22px;margin-bottom:40px;background:linear-gradient(135deg,rgba(212,83,126,.22),rgba(239,159,39,.18));border:1px solid rgba(239,159,39,.3)}
+    .creadores h2{margin-bottom:10px}
+    .creadores p{margin:0 0 12px;color:var(--fg);opacity:.9;font-size:16px;line-height:1.5;max-width:560px}
+    .creadores .etiqueta{display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#F2B33D;margin-bottom:6px}
+    .creadores .pronto{font-size:13.5px;background:rgba(0,0,0,.25);border-radius:12px;padding:10px 12px;opacity:1}
+    .creadores ul{margin:0 0 18px;padding-left:18px;color:var(--muted);line-height:1.7;font-size:14px}
+    /* Galería */
+    .galeria{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding-bottom:40px}
+    .galeria figure{margin:0;border-radius:18px;overflow:hidden;aspect-ratio:3/4;background:var(--surface2);position:relative}
+    .galeria img{width:100%;height:100%;object-fit:cover;display:block;transition:filter .6s}
+    .galeria figure.borrosa img{filter:blur(14px)}
+    .galeria figure:nth-child(2n){transform:translateY(18px)}
+    .ayuda{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:40px}
+    .ayuda ol{margin:8px 0 0;padding-left:20px;color:var(--muted);line-height:1.6;font-size:14px}
+    footer{color:var(--muted);font-size:12px;padding:20px 0 calc(30px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--fg);color:var(--bg);font-weight:600;font-size:14px;padding:12px 18px;border-radius:14px;max-width:90%;z-index:10;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+    @media (max-width:760px){
+      .hero{grid-template-columns:1fr;gap:28px;padding-top:6px;text-align:center}
+      .botones,.nota{margin-left:auto;margin-right:auto}
+      .pasos{grid-template-columns:1fr}
+      .galeria{grid-template-columns:repeat(2,1fr)}
+      header .jugar{display:none}
+    }
+    @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <span class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span>
+      <span class="marca">Blurry</span>
+      <a class="jugar" data-app href="/">Jugar en el navegador</a>
+    </header>
+
+    <section class="hero">
+      <div>
+        <h1>¿Qué hay detrás<br />de lo <span>borroso?</span></h1>
+        <p class="lema"><b style="color:var(--fg)">Adivina y lo sabrás.</b> Acierta la pregunta y la foto se aclara. Gratis.</p>
+        <p class="regalo"><span class="moneda">$</span><span><b>100 monedas gratis</b> de bienvenida al crear tu cuenta</span></p>
+
+        <div class="botones">
+          <!-- Android -->
+          <a class="btn grad" id="apk" href="/blurry.apk" download="Blurry.apk">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            <span class="t">Descargar APK<small>Android · 1,3 MB</small></span>
+          </a>
+          <button class="btn soft" id="instalar" type="button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7M9 11l3 3 3-3"/></svg>
+            <span class="t">Instalar desde el navegador<small>Sin descargar archivos</small></span>
+          </button>
+          <!-- iPhone -->
+          <a class="btn grad oculto" id="ios" data-app href="/">
+            <span class="t">Abrir Blurry<small>Luego: Compartir → Añadir a pantalla de inicio</small></span>
+          </a>
+          <a class="btn soft oculto" id="web" data-app href="/">Jugar ahora en el navegador</a>
+        </div>
+        <p class="nota" id="nota"></p>
+      </div>
+
+      <div class="telefonos">
+      <div class="telefono" aria-label="Demostración: alguien adivina y la foto se aclara">
+        <div class="pantalla">
+          <div class="foto" id="foto"></div>
+          <div class="barra-app"><span>@lucia</span><span class="vidas">♥♥♥</span></div>
+          <div class="acierto" id="acierto">¡Acertaste! ✨</div>
+          <div class="capa" id="capa">
+            <p class="pregunta" id="pregunta"></p>
+            <div class="reloj"><i id="reloj"></i></div>
+            <div id="opciones"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Feed real: los creadores más populares de Blurry (datos en vivo de /api/escaparate). -->
+      <div class="telefono oculto" id="tel-feed" aria-label="Los creadores más populares de Blurry">
+        <div class="pantalla feed">
+          <div class="feed-top"><b>Blurry</b><span class="vidas">♥♥♥</span></div>
+          <div class="chips"><span>Nuevos</span><span>Siguiendo</span><span class="on">Populares</span><span>Para ti</span></div>
+          <div class="lista"><div class="rueda" id="rueda"></div></div>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <h2>Así se juega</h2>
+    <section class="pasos">
+      <div class="paso"><span class="num">1</span><b>Ves la foto borrosa</b><p>Cada creador tiene una fila de fotos. Empiezan todas borrosas.</p></div>
+      <div class="paso"><span class="num">2</span><b>Adivina antes de que acabe el tiempo</b><p>Una pregunta sobre la persona y tres respuestas. Si aciertas, la foto es tuya.</p></div>
+      <div class="paso"><span class="num">3</span><b>Sigue, comparte y gana</b><p>Sigue a tus creadores favoritos, mira sus reels e invita a tus amigos para ganar vidas y monedas.</p></div>
+    </section>
+
+    <section class="creadores">
+      <div>
+        <p class="etiqueta">Para creadores</p>
+        <h2>Para creadores originales como tú</h2>
+        <p>Gana monedas publicando las fotos y videos que ya compartes gratis en otras plataformas. Tus seguidores adivinan para verlos y tú subes en Blurry.</p>
+        <p class="pronto"><b>Pronto podrás cobrar.</b> Ahora estamos en fase de prueba: las monedas sirven para probar el sistema y te avisaremos cuando empiecen los pagos. Los seguidores que consigas ya son reales.</p>
+        <ul>
+          <li>Pones tu precio a cada foto o video.</li>
+          <li>Sube reels gratis para darte a conocer.</li>
+          <li>Cada seguidor nuevo impulsa tu perfil.</li>
+        </ul>
+        <a class="btn grad" data-app href="/" style="max-width:320px">Empieza a publicar gratis</a>
+      </div>
+    </section>
+
+    <h2>Diviértete adivinando</h2>
+    <section class="galeria" id="galeria"></section>
+
+    <section class="ayuda" id="ayuda-apk">
+      <b>¿Cómo instalo el APK en Android?</b>
+      <ol>
+        <li>Toca <b>Descargar APK</b> y abre el archivo <b>Blurry.apk</b> cuando termine.</li>
+        <li>Si Android lo pide, permite <b>instalar apps de este origen</b> (tu navegador o Archivos).</li>
+        <li>Toca <b>Instalar</b> y abre Blurry desde tu pantalla de inicio.</li>
+      </ol>
+    </section>
+
+    <footer>
+      © Blurry · Solo para mayores de 18 años · <a href="/terminos/">Términos</a> · <a href="/privacidad/">Privacidad</a> · Fotos de muestra: <a href="https://unsplash.com/?utm_source=blurry&utm_medium=referral" target="_blank" rel="noopener">Unsplash</a>
+    </footer>
+  </div>
+
+  <script>
+    // Fotos libres de Unsplash (licencia gratuita).
+    const u = (id, w) => `https://images.unsplash.com/photo-${id}?w=${w}&q=70&auto=format&fit=crop`;
+    const DEMO = [
+      { id: "1494790108377-be9c29b29330", q: "¿Cuál es mi comida favorita?", ops: ["Sushi", "Tacos", "Pizza"], ok: 1 },
+      { id: "1545209536-c79b0603d7ad", q: "¿A qué país viajé este año?", ops: ["Japón", "México", "Italia"], ok: 2 },
+      { id: "1535295972055-1c762f4483e5", q: "¿Qué deporte practico?", ops: ["Surf", "Tenis", "Boxeo"], ok: 0 },
+    ];
+    const GALERIA = [
+      ["1582298538104-fe2e74c27f59", "Amigos riendo y chocando las manos en un café"],
+      ["1607748862156-7c548e7e98f4", "Grupo de chicas riendo en unas escaleras"],
+      ["1644945581764-66b9e8ed4893", "Dos chicas sonriendo en la playa"],
+      ["1605964604905-774647507505", "Tres chicas sonriendo"],
+      ["1548809988-619418ad859c", "Pareja sonriendo"],
+      ["1570840934347-4dc56c98b8ef", "Chica sonriendo"],
+      ["1617812191081-2a24e3f30e45", "Chica de pelo castaño sonriendo"],
+      ["1595380785068-8608441faa8e", "Chica sonriendo"],
+    ];
+
+    // Galería: algunas fotos empiezan borrosas y se aclaran al verlas.
+    const gal = document.getElementById("galeria");
+    GALERIA.forEach(([id, alt], i) => {
+      const f = document.createElement("figure");
+      if (i % 3 !== 0) f.className = "borrosa";
+      const img = document.createElement("img");
+      img.src = u(id, 500); img.alt = alt; img.loading = "lazy";
+      f.appendChild(img); gal.appendChild(f);
+    });
+    const obs = new IntersectionObserver((es) => es.forEach((e) => {
+      if (e.isIntersecting) setTimeout(() => e.target.classList.remove("borrosa"), 500 + Math.random() * 900);
+    }), { threshold: .6 });
+    gal.querySelectorAll("figure").forEach((f) => obs.observe(f));
+
+    // Demo: pregunta → corre el tiempo → elige la buena → la foto se aclara. En bucle.
+    DEMO.forEach((d) => { const i = new Image(); i.src = u(d.id, 700); });
+    const $ = (id) => document.getElementById(id);
+    const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+    const cargada = (src) => new Promise((r) => { const i = new Image(); i.onload = i.onerror = r; i.src = src; });
+    async function demo() {
+      for (let n = 0; ; n = (n + 1) % DEMO.length) {
+        const d = DEMO[n];
+        // La foto nueva aparece ya borrosa (sin animar el desenfoque); solo se anima al aclararse.
+        const foto = $("foto");
+        await cargada(u(d.id, 700));
+        foto.style.transition = "none";
+        foto.classList.remove("nitida");
+        foto.style.backgroundImage = `url(${u(d.id, 700)})`;
+        void foto.offsetWidth;
+        foto.style.transition = "";
+        $("capa").classList.remove("fuera");
+        $("acierto").classList.remove("si");
+        $("pregunta").textContent = d.q;
+        $("opciones").innerHTML = d.ops.map((o) => `<span class="op">${o}</span>`).join("");
+        const reloj = $("reloj");
+        reloj.style.transition = "none"; reloj.style.width = "100%";
+        await espera(50);
+        reloj.style.transition = "width 3.2s linear"; reloj.style.width = "35%";
+        await espera(2600);
+        $("opciones").children[d.ok].classList.add("ok");
+        await espera(700);
+        $("capa").classList.add("fuera");
+        $("acierto").classList.add("si");
+        $("foto").classList.add("nitida");
+        await espera(1500);
+        $("acierto").classList.remove("si");
+        await espera(1800);
+      }
+    }
+    demo();
+
+    // Feed real: las tarjetas de los creadores más populares, como en la app, una debajo de otra.
+    const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    function dificultad(t) {
+      if (t.totalDesbloqueos < 20) return ["Nuevo", "#2A2227", "#F4EEF1"];
+      if (t.porcentajeFallos >= 70) return ["Difícil", "#4A1B1B", "#FFB1AE"];
+      if (t.porcentajeFallos >= 40) return ["Media", "#4A3A12", "#F7CF6B"];
+      return ["Fácil", "#123B2C", "#7FE0B8"];
+    }
+    async function feedReal() {
+      let tarjetas = [];
+      try { tarjetas = (await (await fetch("/api/escaparate")).json()).tarjetas || []; } catch { return; }
+      if (!tarjetas.length) return;
+      const refQ = ref ? "&ref=" + encodeURIComponent(ref) : "";
+      const html = tarjetas.map((t) => {
+        const [dl, dbg, dfg] = dificultad(t);
+        const precio = t.precioPromedio != null ? `<span class="precio">≈ ${Number(t.precioPromedio)} <span class="moneda chica">$</span></span>` : "";
+        const img = t.avatarUrl ? `<div class="img" style="background-image:url('${esc(t.avatarUrl)}')">${precio}</div>` : `<div class="img sin">${precio}</div>`;
+        return `<a class="tarjeta" href="/?u=${encodeURIComponent(t.username)}${refQ}">${img}<div class="cuerpo">
+          <div class="fila"><b>@${esc(t.username)}</b><span class="seguir">Seguir</span></div>
+          <div class="meta"><span class="dif" style="background:${dbg};color:${dfg}">${dl}</span>
+            <span>♥ ${t.porcentajeMeGusta == null ? "Nuevo" : t.porcentajeMeGusta + "%"} · ${t.totalMeGusta}</span>
+            <span>${t.numPublicaciones} ${t.numPublicaciones === 1 ? "foto" : "fotos"}</span></div>
+          <div class="barra"></div></div></a>`;
+      }).join("");
+      // Se duplica la lista para que el desplazamiento sea un bucle sin saltos.
+      const rueda = $("rueda");
+      rueda.innerHTML = html + html;
+      rueda.style.setProperty("--dur", Math.max(12, tarjetas.length * 5) + "s");
+      $("tel-feed").classList.remove("oculto");
+    }
+
+    // Enlaces a la app: conservan el código de invitación (?ref=usuario) si viene en la dirección.
+    const ref = new URLSearchParams(location.search).get("ref");
+    if (ref) document.querySelectorAll("[data-app]").forEach((a) => a.href = "/?ref=" + encodeURIComponent(ref));
+    feedReal();
+
+    // Botones según el dispositivo.
+    const ua = navigator.userAgent;
+    const android = /Android/i.test(ua);
+    const ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const nota = $("nota");
+    if (ios) {
+      ["apk", "instalar"].forEach((id) => $(id).classList.add("oculto"));
+      $("ios").classList.remove("oculto");
+      $("ayuda-apk").classList.add("oculto");
+      nota.textContent = "En iPhone se instala desde Safari: abre Blurry, toca Compartir (el cuadrado con la flecha) y elige «Añadir a pantalla de inicio».";
+    } else if (!android) {
+      $("web").classList.remove("oculto");
+      nota.textContent = "El APK es para teléfonos Android. Abre esta página en tu móvil para instalar Blurry, o juega ahora en el navegador.";
+    } else {
+      nota.textContent = "¿Prefieres no descargar archivos? Instálala desde el navegador: queda igual en tu pantalla de inicio.";
+    }
+
+    function aviso(t) {
+      const d = document.createElement("div");
+      d.className = "toast"; d.textContent = t; document.body.appendChild(d);
+      setTimeout(() => d.remove(), 5000);
+    }
+
+    // Instalar como app desde el navegador (Chrome en Android).
+    let promptInstalar = null;
+    addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); promptInstalar = e; });
+    addEventListener("appinstalled", () => aviso("¡Blurry instalada! Ábrela desde tu pantalla de inicio."));
+    $("instalar").addEventListener("click", async () => {
+      if (promptInstalar) {
+        promptInstalar.prompt();
+        await promptInstalar.userChoice.catch(() => {});
+        promptInstalar = null;
+        return;
+      }
+      if (matchMedia("(display-mode: standalone)").matches) return aviso("Blurry ya está instalada.");
+      aviso("Abre el menú ⋮ del navegador y toca «Instalar aplicación» o «Añadir a pantalla de inicio».");
+      setTimeout(() => location.href = ref ? "/?ref=" + encodeURIComponent(ref) : "/", 2500);
+    });
+
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  </script>
+</body>
+</html>

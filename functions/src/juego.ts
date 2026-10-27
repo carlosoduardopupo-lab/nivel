@@ -6,7 +6,8 @@
 // pregunta cuenta como fallo y no sirve para ver la pregunta gratis.
 import { FieldValue, Timestamp, type DocumentReference, type Transaction } from "firebase-admin/firestore";
 import { bloqueoHasta, db, fallo, leerPrivado, mezclar, vidasActuales, type Privado } from "./comun.js";
-import { MARGEN_RESPUESTA_MS, MILESIMAS_POR_MONEDA, DIAS_EN_ESPERA, PREGUNTAS_POR_POST, VIDAS_POR_DIA, diaDe } from "./reglas.js";
+import { contarReferido, leerInvitador } from "./referidos.js";
+import { FASE_PRUEBA, MARGEN_RESPUESTA_MS, MILESIMAS_POR_MONEDA, DIAS_EN_ESPERA, PREGUNTAS_POR_POST, VIDAS_POR_DIA, diaDe } from "./reglas.js";
 
 type Post = {
   creadorId: string;
@@ -109,6 +110,7 @@ export async function empezarPregunta(uid: string, datos: { postId: string }, ah
     const post = await leerPost(tx, r.post);
     await comprobarNivel(tx, uid, postId, post);
     const [privado, intentoSnap] = await Promise.all([leerPrivado(tx, uid), tx.get(r.intento)]);
+    const invitador = await leerInvitador(tx, privado);
     const intento: Intento = intentoSnap.exists ? { ...intentoVacio(), ...(intentoSnap.data() as Intento) } : intentoVacio();
     const hoy = diaDe(ahora);
 
@@ -125,8 +127,8 @@ export async function empezarPregunta(uid: string, datos: { postId: string }, ah
       };
     }
 
+    if (intento.preguntasUsadas >= PREGUNTAS_POR_POST) fallo("sin-preguntas", "Ya usaste tu intento en esta foto. Ahora solo puedes verla pagando.");
     if (intento.ultimoDia === hoy) fallo("ya-intentaste-hoy", "Ya intentaste esta foto hoy. Mañana tendrás otra pregunta.");
-    if (intento.preguntasUsadas >= PREGUNTAS_POR_POST) fallo("sin-preguntas", "Usaste las 3 preguntas de esta foto. Ahora solo puedes verla pagando.");
 
     const v = vidasActuales(privado, ahora);
     if (v.vidas <= 0) fallo("sin-vidas", "Te quedaste sin vidas.");
@@ -151,6 +153,8 @@ export async function empezarPregunta(uid: string, datos: { postId: string }, ah
     tx.update(r.privado, { vidas, vidasDia: hoy, vidasVuelvenEn: vidas === 0 ? bloqueoHasta(ahora) : v.vidasVuelvenEn });
     tx.update(r.post, { intentos: FieldValue.increment(1), fallos: FieldValue.increment(1) });
     tx.update(db().doc(`users/${post.creadorId}`), { totalIntentos: FieldValue.increment(1), totalFallos: FieldValue.increment(1) });
+    // Su primera foto jugada: si vino invitado, la invitación cuenta ahora.
+    contarReferido(tx, uid, invitador, ahora);
 
     return {
       pregunta: p.texto,
@@ -228,6 +232,7 @@ export async function pagarRespuesta(uid: string, datos: { postId: string }, aho
     const post = await leerPost(tx, r.post);
     const siguiente = await comprobarNivel(tx, uid, postId, post);
     const [privado, intentoSnap] = await Promise.all([leerPrivado(tx, uid), tx.get(r.intento)]);
+    const invitador = await leerInvitador(tx, privado);
     const intento: Intento = intentoSnap.exists ? { ...intentoVacio(), ...(intentoSnap.data() as Intento) } : intentoVacio();
 
     if (privado.monedas < post.precio) fallo("sin-monedas", `Te faltan ${post.precio - privado.monedas} monedas.`);
@@ -237,8 +242,11 @@ export async function pagarRespuesta(uid: string, datos: { postId: string }, aho
     const n = intento.pendiente ? intento.preguntaActual! : Math.max(0, intento.preguntasUsadas - 1);
     const p = (await tx.get(r.post.collection("preguntas").doc(String(n)))).data() as Pregunta;
 
+    // Primero se gastan las monedas de regalo; solo las compradas le pagan al creador.
+    const regalo = Math.min(privado.monedasRegalo ?? 0, post.precio);
+    const pagadas = post.precio - regalo;
     const monedas = privado.monedas - post.precio;
-    const cambiosPrivado: Record<string, unknown> = { monedas };
+    const cambiosPrivado: Record<string, unknown> = { monedas, monedasRegalo: (privado.monedasRegalo ?? 0) - regalo };
     if (intento.pendiente) {
       tx.update(r.intento, { pendiente: false, resultado: "pago" });
       if (ahora.getTime() <= venceEn(intento, post)) {
@@ -251,19 +259,30 @@ export async function pagarRespuesta(uid: string, datos: { postId: string }, aho
     tx.update(r.privado, cambiosPrivado);
     desbloquear(tx, uid, postId, post, siguiente, "pago", ahora);
 
-    const milesimas = post.precio * MILESIMAS_POR_MONEDA;
-    tx.update(r.post, { desbloqueos: FieldValue.increment(1), monedasGastadas: FieldValue.increment(post.precio) });
+    tx.update(r.post, { desbloqueos: FieldValue.increment(1), monedasGastadas: FieldValue.increment(pagadas), monedasRecibidas: FieldValue.increment(post.precio) });
+    if (FASE_PRUEBA) {
+      // El creador acumula todas las monedas gastadas en su foto (de regalo: no se pueden retirar).
+      tx.update(db().doc(`private/${post.creadorId}`), {
+        monedas: FieldValue.increment(post.precio),
+        monedasRegalo: FieldValue.increment(post.precio),
+        monedasGanadas: FieldValue.increment(post.precio),
+      });
+    }
     tx.update(db().doc(`users/${post.creadorId}`), { totalDesbloqueos: FieldValue.increment(1) });
-    tx.update(db().doc(`private/${post.creadorId}`), { gananciasEnEspera: FieldValue.increment(milesimas) });
-    tx.set(db().collection(`private/${post.creadorId}/ganancias`).doc(), {
-      milesimas,
-      postId,
-      compradorId: uid,
-      liberaEn: Timestamp.fromMillis(ahora.getTime() + DIAS_EN_ESPERA * 86_400_000),
-      liberado: false,
-      creadoEn: Timestamp.fromDate(ahora),
-    });
+    if (pagadas > 0) {
+      const milesimas = pagadas * MILESIMAS_POR_MONEDA;
+      tx.update(db().doc(`private/${post.creadorId}`), { gananciasEnEspera: FieldValue.increment(milesimas) });
+      tx.set(db().collection(`private/${post.creadorId}/ganancias`).doc(), {
+        milesimas,
+        postId,
+        compradorId: uid,
+        liberaEn: Timestamp.fromMillis(ahora.getTime() + DIAS_EN_ESPERA * 86_400_000),
+        liberado: false,
+        creadoEn: Timestamp.fromDate(ahora),
+      });
+    }
 
+    contarReferido(tx, uid, invitador, ahora);
     return { respuesta: p.opciones[p.correcta], pregunta: p.texto, monedas };
   });
 }

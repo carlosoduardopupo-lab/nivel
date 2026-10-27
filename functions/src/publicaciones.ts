@@ -9,7 +9,8 @@ import { logger } from "firebase-functions/v2";
 import ffmpegPath from "ffmpeg-static";
 import sharp from "sharp";
 import { db, fallo, texto } from "./comun.js";
-import { MAX_PREGUNTA, MAX_RESPUESTA, PRECIO_MIN_FOTO, PRECIO_MIN_VIDEO, VIDEO_MAX_SEGUNDOS, precioMaximo, tiempoDe } from "./reglas.js";
+import { aprobarPublicacion } from "./moderacion.js";
+import { APROBACION_AUTOMATICA, precioPromedio, MAX_PREGUNTA, MAX_RESPUESTA, PREGUNTAS_POR_POST, PRECIO_MIN_FOTO, PRECIO_MIN_VIDEO, VIDEO_MAX_SEGUNDOS, precioMaximo, tiempoDe } from "./reglas.js";
 
 const run = promisify(execFile);
 
@@ -19,11 +20,10 @@ export type DatosPublicacion = {
   tipo: unknown;
   precio: unknown;
   preguntas: unknown;
-  usarIA?: unknown;
 };
 
 function validarPregunta(p: PreguntaEntrada, n: number) {
-  const t = texto(p?.texto, `la pregunta ${n}`, MAX_PREGUNTA, 3);
+  const t = texto(p?.texto, n > 1 ? `la pregunta ${n}` : "la pregunta", MAX_PREGUNTA, 3);
   const correcta = texto(p?.correcta, `la respuesta correcta de la pregunta ${n}`, MAX_RESPUESTA);
   const falsas = Array.isArray(p?.falsas) ? p.falsas : [];
   const f1 = texto(falsas[0], `la primera respuesta falsa de la pregunta ${n}`, MAX_RESPUESTA);
@@ -48,15 +48,9 @@ export async function crearPublicacion(uid: string, datos: DatosPublicacion, aho
     fallo("precio-invalido", `El precio debe estar entre ${min} y ${max} monedas.`, "invalid-argument");
   }
 
-  if (datos.usarIA === true) {
-    fallo("ia-no-disponible", "Las preguntas de IA aún no están disponibles. Escribe tú las preguntas 2 y 3.", "invalid-argument");
-  }
   const entrada = Array.isArray(datos.preguntas) ? (datos.preguntas as PreguntaEntrada[]) : [];
-  if (entrada.length !== 3) fallo("faltan-preguntas", "Escribe las 3 preguntas.", "invalid-argument");
+  if (entrada.length !== PREGUNTAS_POR_POST) fallo("faltan-preguntas", "Escribe la pregunta.", "invalid-argument");
   const preguntas = entrada.map((p, i) => validarPregunta(p, i + 1));
-  if (new Set(preguntas.map((p) => p.texto.toLowerCase())).size < 3) {
-    fallo("preguntas-repetidas", "Las 3 preguntas deben ser distintas.", "invalid-argument");
-  }
 
   const ref = db().collection("posts").doc();
   const ruta = `originales/${uid}/${ref.id}`;
@@ -158,6 +152,7 @@ export async function procesarSubida(bucketName: string, nombre: string, content
   await bucket.file(rutaBorrosa).save(borrosa, { contentType: "image/jpeg", metadata: { cacheControl: "public, max-age=86400" } });
   await archivo.save(limpio, { contentType: tipoFinal, metadata: { metadata: { procesado: "1" } } });
   await refPost.update({ rutaBorrosa, estado: "revision", procesadoEn: FieldValue.serverTimestamp() });
+  if (APROBACION_AUTOMATICA) await aprobarPublicacion(postId);
 }
 
 /** Duración en segundos según ffmpeg, o null si no es un video legible. */
@@ -170,12 +165,69 @@ async function duracionVideo(ruta: string): Promise<number | null> {
 }
 
 /** El creador consulta las preguntas de su propia publicación (el cliente nunca las lee directo). */
-export async function misPreguntas(uid: string, datos: { postId: string }): Promise<{ preguntas: { texto: string; respuesta: string; autor: string }[] }> {
+export async function misPreguntas(uid: string, datos: { postId: string }): Promise<{ preguntas: { texto: string; respuesta: string; falsas: string[]; autor: string }[] }> {
   const ref = db().doc(`posts/${datos.postId}`);
   const post = await ref.get();
   if (!post.exists || post.get("creadorId") !== uid) fallo("no-existe", "Esa publicación no existe.", "not-found");
   const snap = await ref.collection("preguntas").orderBy("__name__").get();
   return {
-    preguntas: snap.docs.map((d) => ({ texto: d.get("texto"), respuesta: d.get("opciones")[d.get("correcta")], autor: d.get("autor") ?? "creador" })),
+    preguntas: snap.docs.map((d) => {
+      const opciones = d.get("opciones") as string[];
+      const correcta = d.get("correcta") as number;
+      return { texto: d.get("texto"), respuesta: opciones[correcta], falsas: opciones.filter((_, i) => i !== correcta), autor: d.get("autor") ?? "creador" };
+    }),
   };
+}
+
+/**
+ * El creador elimina una publicación suya.
+ * - Si nadie la desbloqueó, se borra del todo (documento, preguntas y archivos).
+ * - Si alguien ya la desbloqueó, sigue siendo suya para siempre: se marca
+ *   "eliminada" (sale del feed y del perfil) y se conservan los archivos.
+ */
+export async function eliminarPublicacion(uid: string, datos: { postId: string }): Promise<{ borrada: boolean }> {
+  const ref = db().doc(`posts/${datos.postId}`);
+  const res = await db().runTransaction(async (tx) => {
+    const post = await tx.get(ref);
+    if (!post.exists || post.get("creadorId") !== uid || post.get("estado") === "eliminada") fallo("no-existe", "Esa publicación no existe.", "not-found");
+    const aprobada = post.get("estado") === "aprobada";
+    const conservar = aprobada && (post.get("desbloqueos") ?? 0) > 0;
+    const refCreador = db().doc(`users/${uid}`);
+    if (aprobada) {
+      // El precio promedio se recalcula con las demás publicaciones visibles.
+      const otras = await tx.get(db().collection("posts").where("creadorId", "==", uid).where("estado", "==", "aprobada"));
+      const precios = otras.docs.filter((d) => d.id !== ref.id).map((d) => d.get("precio") as number);
+      const creador = await tx.get(refCreador);
+      tx.update(refCreador, {
+        numPublicaciones: FieldValue.increment(-1),
+        // Las siguientes aprobadas siguen la fila sin repetir el número de nivel.
+        siguienteOrden: creador.get("siguienteOrden") ?? creador.get("numPublicaciones") ?? 0,
+        precioPromedio: precioPromedio(precios),
+      });
+    }
+    if (conservar) tx.update(ref, { estado: "eliminada", eliminadaEn: FieldValue.serverTimestamp() });
+    return { conservar, rutas: [post.get("rutaOriginal"), post.get("rutaBorrosa")].filter((r): r is string => typeof r === "string") };
+  });
+  if (res.conservar) return { borrada: false };
+  if (res.rutas.length) {
+    const bucket = getStorage().bucket();
+    await Promise.all(res.rutas.map((r) => bucket.file(r).delete({ ignoreNotFound: true })));
+  }
+  await db().recursiveDelete(ref);
+  return { borrada: true };
+}
+
+/**
+ * El creador cambia la pregunta de su publicación (la que se juega, la 0).
+ * Una pregunta abierta en este momento se sigue respondiendo bien: la correcta
+ * siempre se guarda en la posición 0.
+ */
+export async function editarPregunta(uid: string, datos: { postId: string; pregunta: unknown }): Promise<void> {
+  const nueva = validarPregunta(datos.pregunta as PreguntaEntrada, 1);
+  const ref = db().doc(`posts/${datos.postId}`);
+  await db().runTransaction(async (tx) => {
+    const post = await tx.get(ref);
+    if (!post.exists || post.get("creadorId") !== uid || post.get("estado") === "eliminada") fallo("no-existe", "Esa publicación no existe.", "not-found");
+    tx.set(ref.collection("preguntas").doc("0"), { ...nueva, autor: "creador" });
+  });
 }

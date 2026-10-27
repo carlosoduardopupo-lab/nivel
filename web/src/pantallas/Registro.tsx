@@ -9,13 +9,14 @@ import { Avatar } from "../componentes";
 import { auth, db, storage } from "../firebase";
 import { Ic } from "../iconos";
 import { useSesion } from "../sesion";
-import { INTERESES, reducirImagen } from "../util";
+import { borrarReferido, INTERESES, leerReferido, reducirImagen } from "../util";
 
-function edad(dd: string, mm: string, aa: string): number | null {
-  const D = +dd, M = +mm, A = +aa;
-  if (!D || !M || aa.length < 4 || M > 12 || D > 31) return null;
-  const b = new Date(A, M - 1, D);
-  if (b.getMonth() !== M - 1) return null;
+/** Edad para una fecha "AAAA-MM-DD" (la del selector de fecha). */
+function edad(fecha: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha);
+  if (!m) return null;
+  const A = +m[1], M = +m[2], D = +m[3];
+  if (A < 1900) return null;
   const t = new Date();
   let e = t.getFullYear() - A;
   if (t < new Date(t.getFullYear(), M - 1, D)) e--;
@@ -37,7 +38,7 @@ export function Registro({ alTerminar }: { alTerminar: (cuentaNueva: boolean) =>
   const { usuario, perfil } = useSesion();
   const [paso, setPaso] = useState(usuario ? 1 : 0);
   const [modo, setModo] = useState<"crear" | "entrar">("crear");
-  const [d, setD] = useState({ mail: "", pass: "", name: "", dd: "", mm: "", aa: "", terms: false, user: "" });
+  const [d, setD] = useState({ mail: "", pass: "", name: "", fecha: "", codigo: leerReferido() ?? "", terms: false, user: "" });
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [foto, setFoto] = useState<Blob | null>(null);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export function Registro({ alTerminar }: { alTerminar: (cuentaNueva: boolean) =>
   }, [perfil, paso, alTerminar]);
 
   const set = (k: keyof typeof d, v: string | boolean) => setD((x) => ({ ...x, [k]: v }));
-  const e = edad(d.dd, d.mm, d.aa);
+  const e = edad(d.fecha);
 
   // Comprobación del nombre de usuario en el servidor (con pausa para no llamar en cada tecla).
   useEffect(() => {
@@ -100,10 +101,12 @@ export function Registro({ alTerminar }: { alTerminar: (cuentaNueva: boolean) =>
         await api.registrar({
           username: d.user.trim().toLowerCase(),
           nombreReal: d.name.trim(),
-          fechaNacimiento: `${d.aa}-${d.mm.padStart(2, "0")}-${d.dd.padStart(2, "0")}`,
+          fechaNacimiento: d.fecha,
           intereses: [...sel],
           aceptaTerminos: d.terms,
+          referidoPor: d.codigo.trim() || undefined,
         });
+        borrarReferido();
         const uid = auth.currentUser!.uid;
         if (foto) {
           const r = ref(storage, `avatares/${uid}.jpg`);
@@ -169,8 +172,8 @@ export function Registro({ alTerminar }: { alTerminar: (cuentaNueva: boolean) =>
             <div style={{ display: "flex", justifyContent: "center", margin: "18px 0" }}>
               <span style={{ width: 72, height: 72, borderRadius: 22, background: "var(--grad)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 34 }}><Ic n="eye" /></span>
             </div>
-            <p className="h2" style={{ textAlign: "center", fontSize: 30 }}>Adivina…<br />y ganarás</p>
-            <p className="sub" style={{ textAlign: "center", marginBottom: 22 }}>Lo bueno siempre está detrás del borroso</p>
+            <p className="h2" style={{ textAlign: "center", fontSize: 30 }}>¿Qué hay detrás<br />de lo borroso?</p>
+            <p className="sub" style={{ textAlign: "center", marginBottom: 22 }}>Adivina y lo sabrás.</p>
             <button className="btn soft" onClick={conGoogle}>Continuar con Google</button>
             <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 10px", color: "var(--muted)", fontSize: 12 }}>
               <span style={{ flex: 1, height: 1, background: "var(--line)" }} />o con correo<span style={{ flex: 1, height: 1, background: "var(--line)" }} />
@@ -200,19 +203,17 @@ export function Registro({ alTerminar }: { alTerminar: (cuentaNueva: boolean) =>
             <p className="lbl">Nombre real</p>
             <div className="field"><input placeholder="Nombre y apellido" aria-label="Nombre real" value={d.name} onChange={(x) => set("name", x.target.value)} autoComplete="name" /></div>
             <p className="lbl">Fecha de nacimiento</p>
-            <div style={{ display: "flex", gap: 8 }}>
-              {([["dd", "DD", 2, 1], ["mm", "MM", 2, 1], ["aa", "AAAA", 4, 1.4]] as const).map(([k, ph, max, flex]) => (
-                <div className="field" style={{ flex }} key={k}>
-                  <input inputMode="numeric" maxLength={max} placeholder={ph} aria-label={ph} style={{ textAlign: "center" }} value={d[k]} onChange={(x) => set(k, x.target.value.replace(/\D/g, ""))} />
-                </div>
-              ))}
+            <div className="field">
+              <input type="date" aria-label="Fecha de nacimiento" min="1900-01-01" max={new Date().toISOString().slice(0, 10)} style={{ colorScheme: "dark" }} value={d.fecha} onChange={(x) => set("fecha", x.target.value)} />
             </div>
             <p style={{ fontSize: 12, margin: "8px 2px 0", color: e === null ? "var(--muted)" : e < 18 ? "var(--rojo)" : "var(--verde)" }}>
               {e === null ? "Debes tener 18 años o más." : e < 18 ? "Lo sentimos, debes tener 18 años o más para usar la app." : "Edad confirmada"}
             </p>
+            <p className="lbl">Código de invitación <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>· opcional</span></p>
+            <div className="field"><span style={{ color: "var(--muted)" }}><Ic n="share" /></span><input placeholder="Si un amigo te invitó" aria-label="Código de invitación" autoComplete="off" maxLength={21} value={d.codigo} onChange={(x) => set("codigo", x.target.value.replace(/\s/g, ""))} /></div>
             <button role="checkbox" aria-checked={d.terms} onClick={() => set("terms", !d.terms)} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 18, width: "100%" }}>
               <span style={{ width: 22, height: 22, borderRadius: 6, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", ...(d.terms ? { background: "var(--grad)" } : { border: "2px solid var(--muted)" }) }}>{d.terms && <Ic n="check" />}</span>
-              <span style={{ fontSize: 13, lineHeight: 1.4 }}>Confirmo que soy mayor de edad y acepto los <u>Términos</u> y la <u>Política de privacidad</u>.</span>
+              <span style={{ fontSize: 13, lineHeight: 1.4 }}>Confirmo que soy mayor de edad y acepto los <a href="/terminos/" target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()} style={{ textDecoration: "underline" }}>Términos</a> y la <a href="/privacidad/" target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()} style={{ textDecoration: "underline" }}>Política de privacidad</a>.</span>
             </button>
           </>
         )}
@@ -252,9 +253,9 @@ export function Registro({ alTerminar }: { alTerminar: (cuentaNueva: boolean) =>
 
         {paso === 4 && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", paddingTop: 60 }}>
-            <div style={{ padding: 3, borderRadius: "50%", background: "var(--grad)" }}><Avatar url={fotoUrl} tam={96} borde="3px solid var(--bg)" /></div>
+            <Avatar url={fotoUrl} tam={96} />
             <p className="h2" style={{ marginTop: 16 }}>¡Listo, @{d.user.trim().toLowerCase()}!</p>
-            <p className="sub">Tienes 3 vidas para empezar.</p>
+            <p className="sub">Tienes 3 vidas y 100 monedas de regalo para empezar.</p>
             <span className="hearts" style={{ fontSize: 26, gap: 6, marginTop: 10 }}>{[0, 1, 2].map((i) => <Ic key={i} n="heart" lleno />)}</span>
           </div>
         )}

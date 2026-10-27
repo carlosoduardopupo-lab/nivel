@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, where, type QueryConstraint } from "firebase/firestore";
+import { useEffect, useRef, useState } from "react";
+import { collection, doc, endAt, getDoc, getDocs, limit, orderBy, query, startAt, where, type QueryConstraint } from "firebase/firestore";
 import { api, errorDe } from "../api";
-import { Arte, Avatar, Cargando, Corazones, PildoraMonedas } from "../componentes";
+import { Arte, Avatar, BotonesFlotantes, Cargando, claseEntrada, Corazones, PildoraMonedas } from "../componentes";
 import { auth, db } from "../firebase";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
@@ -19,13 +19,13 @@ export type Creador = {
   porcentajeMeGusta: number | null;
   porcentajeFallos: number;
   numPublicaciones: number;
-  precioMinimo: number | null;
+  precioPromedio?: number | null;
   creadoEn?: { toMillis(): number };
 };
 
-const FILTROS = ["Siguiendo", "Más difíciles", "Populares", "Para ti", "Nuevos"] as const;
+const FILTROS = ["Nuevos", "Siguiendo", "Populares", "Para ti"] as const;
 type Filtro = (typeof FILTROS)[number];
-let filtroGuardado: Filtro = "Siguiendo";
+let filtroGuardado: Filtro = "Nuevos";
 export const elegirFiltroInicial = (f: Filtro) => { filtroGuardado = f; };
 
 async function cargar(filtro: Filtro, intereses: string[], siguiendo: Set<string>): Promise<Creador[]> {
@@ -36,7 +36,6 @@ async function cargar(filtro: Filtro, intereses: string[], siguiendo: Set<string
     const docs = await Promise.all([...siguiendo].map((id) => getDoc(doc(db, "users", id))));
     return docs.filter((d) => d.exists()).map((d) => ({ id: d.id, ...d.data() }) as Creador);
   }
-  if (filtro === "Más difíciles") return (await lista([orderBy("porcentajeFallos", "desc")])).filter((c) => c.totalDesbloqueos >= 20);
   if (filtro === "Populares") return lista([orderBy("totalMeGusta", "desc")]);
   if (filtro === "Nuevos") return lista([orderBy("creadoEn", "desc")]);
   // Para ti: creadores con intereses en común, primero los que más comparten.
@@ -46,14 +45,55 @@ async function cargar(filtro: Filtro, intereses: string[], siguiendo: Set<string
   return r.sort((a, b) => comunes(b) - comunes(a));
 }
 
+/** Barra horizontal que también se desplaza con la rueda del ratón y arrastrando. */
+function useBarraDesplazable() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const rueda = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    let inicio: { x: number; scroll: number } | null = null;
+    let movido = false;
+    const bajar = (e: PointerEvent) => { if (e.pointerType === "mouse") { inicio = { x: e.clientX, scroll: el.scrollLeft }; movido = false; } };
+    const mover = (e: PointerEvent) => {
+      if (!inicio) return;
+      const dx = e.clientX - inicio.x;
+      if (Math.abs(dx) > 4) movido = true;
+      el.scrollLeft = inicio.scroll - dx;
+    };
+    const soltar = () => { inicio = null; };
+    // Si arrastró, el clic que viene después no cambia de filtro.
+    const clic = (e: MouseEvent) => { if (movido) { e.stopPropagation(); e.preventDefault(); movido = false; } };
+    el.addEventListener("wheel", rueda, { passive: false });
+    el.addEventListener("pointerdown", bajar);
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", soltar);
+    el.addEventListener("click", clic, true);
+    return () => {
+      el.removeEventListener("wheel", rueda);
+      el.removeEventListener("pointerdown", bajar);
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", soltar);
+      el.removeEventListener("click", clic, true);
+    };
+  }, []);
+  return ref;
+}
+
 export function Feed() {
   const { perfil } = useSesion();
-  const { ir, aviso } = useNav();
+  const { ir, aviso, abrirHoja } = useNav();
   const [filtro, setFiltro] = useState<Filtro>(filtroGuardado);
   const [creadores, setCreadores] = useState<Creador[] | null>(null);
   const [progreso, setProgreso] = useState<Record<string, number>>({});
   const [siguiendo, setSiguiendo] = useState<Set<string> | null>(null);
   const uid = auth.currentUser!.uid;
+  const barra = useBarraDesplazable();
+  const [entrada] = useState(claseEntrada);
 
   useEffect(() => {
     Promise.all([getDocs(collection(db, "users", uid, "siguiendo")), getDocs(collection(db, "users", uid, "progreso"))]).then(([s, p]) => {
@@ -98,17 +138,21 @@ export function Feed() {
 
   return (
     <>
+      <div className={entrada}>
       <div className="top">
-        <button onClick={() => ir({ n: "perfil" })} aria-label="Mi perfil" style={{ borderRadius: "50%" }}>
-          <Avatar url={perfil?.avatarUrl} tam={38} borde="2px solid var(--rosa)" />
-        </button>
-        <p style={{ fontFamily: "var(--f-display)", fontWeight: 800, fontSize: 22, letterSpacing: "-.01em", flex: 1, paddingLeft: 4 }}>Nivel</p>
+        <p style={{ fontFamily: "var(--f-display)", fontWeight: 800, fontSize: 30, letterSpacing: "-.01em", flex: 1 }}>Blurry</p>
         <Corazones /> <PildoraMonedas />
       </div>
-      <div className="filters" role="tablist">
-        {FILTROS.map((f) => (
-          <button key={f} className={`chip ${f === filtro ? "on" : ""}`} role="tab" aria-selected={f === filtro} onClick={() => setFiltro(f)}>{f}</button>
-        ))}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <button onClick={() => ir({ n: "perfil" })} aria-label="Mi perfil" style={{ borderRadius: "50%", flex: "none", marginTop: 1 }}>
+          <Avatar url={perfil?.avatarUrl} tam={36} />
+        </button>
+        <div className="filters" role="tablist" ref={barra} style={{ flex: 1, minWidth: 0 }}>
+          {FILTROS.map((f) => (
+            <button key={f} className={`chip ${f === filtro ? "on" : ""}`} role="tab" aria-selected={f === filtro} onClick={() => setFiltro(f)}>{f}</button>
+          ))}
+          <button className="chip" aria-label="Buscar usuarios" onClick={() => abrirHoja(<BuscarUsuarios />)}><Ic n="search" /></button>
+        </div>
       </div>
       <div id="cards">
         {creadores === null ? <Cargando /> : creadores.length === 0 ? (
@@ -130,7 +174,7 @@ export function Feed() {
               <div className="img">
                 {c.avatarUrl ? <img src={c.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Arte fondo="#F4C0D1" />}
                 {nuevas > 0 && <span className="tag" style={{ left: 10, background: "var(--grad)", color: "#fff" }}>+{nuevas} nuevas</span>}
-                {c.precioMinimo !== null && <span className="tag" style={{ right: 10, background: "rgba(20,14,18,.62)", color: "#fff" }}><span style={{ color: "var(--oro)" }}><Ic n="coin" /></span>desde {c.precioMinimo}</span>}
+                {c.precioPromedio != null && <span className="tag" style={{ right: 10, background: "rgba(20,14,18,.62)", color: "#fff" }}>≈ {c.precioPromedio} <span style={{ color: "var(--oro)" }}><Ic n="coin" /></span></span>}
               </div>
               <div className="body">
                 <div className="row">
@@ -153,7 +197,45 @@ export function Feed() {
           );
         })}
       </div>
-      <button className="fab" onClick={() => ir({ n: "crear" })} aria-label="Crear publicación"><Ic n="plus" /></button>
+      </div>
+      <BotonesFlotantes seccion="juego" />
+    </>
+  );
+}
+
+/** Busca usuarios por el principio de su nombre de usuario (se guardan en minúsculas). */
+function BuscarUsuarios() {
+  const { ir, cerrarHoja } = useNav();
+  const [texto, setTexto] = useState("");
+  const [lista, setLista] = useState<{ id: string; username: string; avatarUrl: string | null; numPublicaciones: number }[] | null>(null);
+  useEffect(() => {
+    const q = texto.trim().toLowerCase().replace(/^@/, "");
+    if (!q) return setLista(null);
+    const t = setTimeout(() => {
+      getDocs(query(collection(db, "users"), orderBy("username"), startAt(q), endAt(q + "\uf8ff"), limit(20))).then(
+        (s) => setLista(s.docs.map((d) => ({ id: d.id, username: d.get("username"), avatarUrl: d.get("avatarUrl") ?? null, numPublicaciones: d.get("numPublicaciones") ?? 0 }))),
+        () => setLista([]),
+      );
+    }, 300);
+    return () => clearTimeout(t);
+  }, [texto]);
+  return (
+    <>
+      <div className="field">
+        <span style={{ color: "var(--muted)" }}><Ic n="search" /></span>
+        <input autoFocus placeholder="Buscar por nombre de usuario" aria-label="Buscar por nombre de usuario" autoComplete="off" value={texto} onChange={(e) => setTexto(e.target.value)} />
+      </div>
+      <div style={{ minHeight: 200, marginTop: 8 }}>
+        {lista === null ? null : lista.length === 0 ? <p className="sub" style={{ textAlign: "center", padding: "24px 0" }}>No hay nadie con ese nombre.</p> : lista.map((u) => (
+          <button key={u.id} className="lrow" style={{ width: "100%", textAlign: "left" }} onClick={() => { cerrarHoja(); ir(u.id === auth.currentUser?.uid ? { n: "perfil" } : { n: "creador", id: u.id }); }}>
+            <Avatar url={u.avatarUrl} tam={42} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontWeight: 700, fontSize: 14 }}>@{u.username}</p>
+              <p style={{ fontSize: 12, color: "var(--muted)" }}>{u.numPublicaciones} {u.numPublicaciones === 1 ? "foto" : "fotos"}</p>
+            </div>
+          </button>
+        ))}
+      </div>
     </>
   );
 }

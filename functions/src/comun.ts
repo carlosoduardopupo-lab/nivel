@@ -24,6 +24,11 @@ export function id(v: unknown, campo = "el identificador"): string {
 
 export type Privado = {
   monedas: number;
+  /** Parte de `monedas` que es regalo (se gasta primero y no genera ganancias). */
+  monedasRegalo?: number;
+  /** uid de quien lo invitó, y si esa invitación ya contó (al jugar su primera foto). */
+  referidoPor?: string | null;
+  referidoContado?: boolean;
   vidas: number;
   vidasVuelvenEn: Timestamp | null;
   vidasDia: string | null;

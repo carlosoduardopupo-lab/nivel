@@ -1,0 +1,43 @@
+{
+  "packageId": "com.blurry.app",
+  "host": "blurry-78f0d.web.app",
+  "name": "Blurry",
+  "launcherName": "Blurry",
+  "display": "standalone",
+  "themeColor": "#130F12",
+  "themeColorDark": "#130F12",
+  "navigationColor": "#130F12",
+  "navigationColorDark": "#130F12",
+  "navigationDividerColor": "#130F12",
+  "navigationDividerColorDark": "#130F12",
+  "backgroundColor": "#130F12",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://blurry-78f0d.web.app/icono-512.png",
+  "maskableIconUrl": "https://blurry-78f0d.web.app/icono-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "C:\\Users\\admin\\nivel\\android\\blurry.keystore",
+    "alias": "blurry"
+  },
+  "appVersionName": "1",
+  "appVersionCode": 1,
+  "appVersion": "1",
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://blurry-78f0d.web.app/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://blurry-78f0d.web.app/",
+  "minSdkVersion": 24,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": []
+}

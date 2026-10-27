@@ -19,7 +19,7 @@ export function Crear() {
   const [vista, setVista] = useState<string | null>(null);
   const [borroso, setBorroso] = useState(false);
   const [precio, setPrecio] = useState(1);
-  const [qs, setQs] = useState<Campos[]>([vacia(), vacia(), vacia()]);
+  const [qs, setQs] = useState<Campos[]>([vacia()]);
   const [error, setError] = useState<string | null>(null);
   const [progreso, setProgreso] = useState<number | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -55,7 +55,7 @@ export function Crear() {
   const faltan: string[] = [];
   if (!archivo) faltan.push(tipo === "video" ? "el video" : "la foto");
   qs.forEach((q, i) => {
-    if (!q.texto.trim() || !q.correcta.trim() || !q.f1.trim() || !q.f2.trim()) faltan.push(`la pregunta ${i + 1}`);
+    if (!q.texto.trim() || !q.correcta.trim() || !q.f1.trim() || !q.f2.trim()) faltan.push(qs.length > 1 ? `la pregunta ${i + 1}` : "la pregunta");
   });
   const repetida = qs.findIndex((q) => {
     const r = [q.correcta, q.f1, q.f2].map((x) => x.trim().toLowerCase()).filter(Boolean);
@@ -79,8 +79,8 @@ export function Crear() {
         <>
           <div style={{ textAlign: "center", paddingTop: 6 }}>
             <span style={{ display: "inline-flex", width: 72, height: 72, borderRadius: "50%", background: "var(--grad)", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 34, animation: "pop .45s ease" }}><Ic n="check" /></span>
-            <p className="h2" style={{ fontSize: 22, marginTop: 14 }}>Enviada a revisión</p>
-            <p className="sub">Aparecerá en tu perfil cuando se apruebe.</p>
+            <p className="h2" style={{ fontSize: 22, marginTop: 14 }}>¡Publicada!</p>
+            <p className="sub">Aparecerá en tu perfil en unos segundos.</p>
           </div>
           <button className="btn dark" style={{ marginTop: 18 }} onClick={() => { reiniciar({ n: "feed" }); ir({ n: "perfil" }); }}>Ver mi perfil</button>
           <button className="btn soft" style={{ marginTop: 8 }} onClick={() => { reiniciar({ n: "feed" }); ir({ n: "crear" }); }}>Crear otra</button>
@@ -92,7 +92,7 @@ export function Crear() {
     }
   }
 
-  const mensaje = preguntasIguales ? "Las 3 preguntas deben ser distintas" : repetida >= 0 ? `Las tres respuestas de la pregunta ${repetida + 1} deben ser distintas` : ok ? "Se revisará antes de publicarse" : "Falta: " + faltan.join(", ");
+  const mensaje = preguntasIguales ? "Las preguntas deben ser distintas" : repetida >= 0 ? "Las tres respuestas deben ser distintas" : ok ? "Lista para publicar" : "Falta: " + faltan.join(", ");
 
   return (
     <>
@@ -148,12 +148,6 @@ export function Crear() {
           <button className="iconbtn" style={{ background: "var(--surface)", borderRadius: "50%", opacity: precio <= min ? 0.35 : 1 }} aria-label="Bajar precio" onClick={() => setPrecio(Math.max(min, precio - 1))}><Ic n="minus" /></button>
           <button className="iconbtn" style={{ background: "var(--surface)", borderRadius: "50%", opacity: precio >= max ? 0.35 : 1 }} aria-label="Subir precio" onClick={() => setPrecio(Math.min(max, precio + 1))}><Ic n="plus" /></button>
         </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginTop: 16, background: "var(--surface2)", borderRadius: 14, padding: 12, opacity: 0.6 }}>
-        <span style={{ width: 22, height: 22, borderRadius: 6, flex: "none", border: "2px solid var(--muted)" }} />
-        <span><b style={{ display: "block", fontSize: 14 }}><span style={{ color: "var(--rosa)" }}><Ic n="spark" /></span> Preguntas 2 y 3 con IA · próximamente</b>
-          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 3, lineHeight: 1.4 }}>Por ahora escribe tú las tres preguntas.</span></span>
       </div>
 
       {error && <p role="alert" style={{ textAlign: "center", fontSize: 13, color: "var(--rojo)", marginTop: 16 }}>{error}</p>}

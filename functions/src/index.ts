@@ -1,11 +1,13 @@
 import { initializeApp } from "firebase-admin/app";
 import { setGlobalOptions } from "firebase-functions/v2";
-import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
+import { HttpsError, onCall, onRequest, type CallableRequest } from "firebase-functions/v2/https";
 import { onObjectFinalized } from "firebase-functions/v2/storage";
 import { id } from "./comun.js";
 import * as cuenta from "./cuenta.js";
+import * as escaparate from "./escaparate.js";
 import * as juego from "./juego.js";
 import * as publicaciones from "./publicaciones.js";
+import * as reels from "./reels.js";
 import * as social from "./social.js";
 
 initializeApp();
@@ -25,7 +27,7 @@ export const registrar = onCall((req) => {
   const uid = uidDe(req);
   const d = datos(req);
   return cuenta.registrar(uid, req.auth?.token.email ?? null, {
-    username: d.username, nombreReal: d.nombreReal, fechaNacimiento: d.fechaNacimiento, intereses: d.intereses, aceptaTerminos: d.aceptaTerminos,
+    username: d.username, nombreReal: d.nombreReal, fechaNacimiento: d.fechaNacimiento, intereses: d.intereses, aceptaTerminos: d.aceptaTerminos, referidoPor: d.referidoPor,
   });
 });
 export const cambiarUsername = onCall((req) => cuenta.cambiarUsername(uidDe(req), { username: datos(req).username }));
@@ -42,11 +44,19 @@ export const pagarRespuesta = onCall((req) => juego.pagarRespuesta(uidDe(req), {
 // Publicaciones
 export const crearPublicacion = onCall((req) => {
   const d = datos(req);
-  return publicaciones.crearPublicacion(uidDe(req), { tipo: d.tipo, precio: d.precio, preguntas: d.preguntas, usarIA: d.usarIA });
+  return publicaciones.crearPublicacion(uidDe(req), { tipo: d.tipo, precio: d.precio, preguntas: d.preguntas });
+});
+export const eliminarPublicacion = onCall((req) => publicaciones.eliminarPublicacion(uidDe(req), { postId: id(datos(req).postId) }));
+export const editarPregunta = onCall((req) => {
+  const d = datos(req);
+  return publicaciones.editarPregunta(uidDe(req), { postId: id(d.postId), pregunta: d.pregunta });
 });
 export const misPreguntas = onCall((req) => publicaciones.misPreguntas(uidDe(req), { postId: id(datos(req).postId) }));
-export const procesarSubida = onObjectFinalized({ memory: "1GiB", timeoutSeconds: 120 }, (ev) =>
-  publicaciones.procesarSubida(ev.data.bucket, ev.data.name, ev.data.contentType, ev.data.metadata),
+// Un solo disparador para todo el bucket: fotos/videos de publicaciones y reels.
+export const procesarSubida = onObjectFinalized({ memory: "1GiB", timeoutSeconds: 300 }, (ev) =>
+  reels.RUTA_REEL.test(ev.data.name)
+    ? reels.procesarReel(ev.data.bucket, ev.data.name, ev.data.contentType, ev.data.metadata)
+    : publicaciones.procesarSubida(ev.data.bucket, ev.data.name, ev.data.contentType, ev.data.metadata),
 );
 
 // Social
@@ -58,9 +68,32 @@ export const darMeGusta = onCall((req) => {
 });
 export const comentar = onCall((req) => {
   const d = datos(req);
-  return social.comentar(uidDe(req), { postId: id(d.postId), texto: d.texto });
+  return social.comentar(uidDe(req), { postId: id(d.postId), texto: d.texto, respondeA: d.respondeA ? id(d.respondeA, "el comentario") : undefined });
 });
 export const reportar = onCall((req) => {
   const d = datos(req);
   return social.reportar(uidDe(req), { postId: id(d.postId), motivo: d.motivo, detalle: d.detalle });
+});
+
+// Reels
+export const crearReel = onCall((req) => reels.crearReel(uidDe(req), { texto: datos(req).texto }));
+export const editarReel = onCall((req) => {
+  const d = datos(req);
+  return reels.editarReel(uidDe(req), { reelId: id(d.reelId), texto: d.texto });
+});
+export const eliminarReel = onCall((req) => reels.eliminarReel(uidDe(req), { reelId: id(datos(req).reelId) }));
+export const meGustaReel = onCall((req) => {
+  const d = datos(req);
+  return reels.meGustaReel(uidDe(req), { reelId: id(d.reelId), valor: d.valor !== false });
+});
+export const comentarReel = onCall((req) => {
+  const d = datos(req);
+  return reels.comentarReel(uidDe(req), { reelId: id(d.reelId), texto: d.texto, respondeA: d.respondeA ? id(d.respondeA, "el comentario") : undefined });
+});
+
+// Escaparate público de la página de descarga (vía Hosting en /api/escaparate):
+// las tarjetas del feed de los creadores más populares.
+export const escaparatePublico = onRequest({ invoker: "public", maxInstances: 5 }, async (_req, res) => {
+  const tarjetas = await escaparate.populares();
+  res.set("Cache-Control", "public, max-age=300, s-maxage=600").json({ tarjetas });
 });

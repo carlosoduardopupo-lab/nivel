@@ -3,6 +3,27 @@
     "default": "demo-nivel",
     "prod": "blurry-78f0d"
   },
-  "targets": {},
+  "targets": {
+    "blurry-78f0d": {
+      "hosting": {
+        "app": [
+          "blurry-78f0d"
+        ],
+        "juego": [
+          "blurry-game"
+        ]
+      }
+    },
+    "demo-nivel": {
+      "hosting": {
+        "app": [
+          "demo-nivel"
+        ],
+        "juego": [
+          "demo-nivel"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

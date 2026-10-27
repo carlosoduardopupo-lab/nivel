@@ -9,3 +9,13 @@ lib/
 .firebase/
 emulator-data/
 service-account*.json
+
+# Firma de la app de Android: NO subir a git (guárdala en un lugar seguro)
+*.keystore
+# Proyecto Android generado (TWA)
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.apk
+*.apk.idsig
