@@ -1,8 +1,8 @@
 # Publicar Blurry
 
-Proyecto real: **blurry-78f0d** (alias `prod` en `.firebaserc`).
-- App: https://blurry-78f0d.web.app
-- Página de descarga: https://blurry-78f0d.web.app/descargar (enlace corto: https://blurry-game.web.app/download)
+Proyecto real: **blurry-78f0d** (alias `prod` en `.firebaserc`). Dominio: **playblurry.com** (Porkbun; DNS: A `199.36.158.100`, TXT `hosting-site=blurry-78f0d`, CNAME `www` → `blurry-78f0d.web.app`). `www` redirige al dominio principal.
+- App: https://playblurry.com (también https://blurry-78f0d.web.app)
+- Página de descarga: https://blurry-78f0d.web.app/descargar (enlace corto: https://playblurry.com/download)
 
 ## Publicar cambios
 ```bash

@@ -115,6 +115,12 @@ describe("Firestore · perfiles", () => {
     await assertFails(getDoc(doc(anonimo().firestore(), "users", CREADOR)));
   });
 
+  it("el dueño activa o desactiva el modo incógnito (solo sí/no); otro no", async () => {
+    await assertSucceeds(updateDoc(doc(como(JUGADOR).firestore(), "users", JUGADOR), { incognito: true }));
+    await assertFails(updateDoc(doc(como(JUGADOR).firestore(), "users", JUGADOR), { incognito: "sí" }));
+    await assertFails(updateDoc(doc(como(OTRO).firestore(), "users", JUGADOR), { incognito: false }));
+  });
+
   it("el dueño cambia avatar e intereses", async () => {
     await assertSucceeds(updateDoc(doc(como(JUGADOR).firestore(), "users", JUGADOR), { intereses: ["Viajes"], avatarUrl: "x" }));
   });

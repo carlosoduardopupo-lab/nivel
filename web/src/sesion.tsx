@@ -15,6 +15,8 @@ export type Perfil = {
   porcentajeMeGusta: number | null;
   numPublicaciones: number;
   esVip: boolean;
+  /** Modo incógnito: no aparece en el feed, Reels ni el escaparate; solo en el buscador. */
+  incognito?: boolean;
   identidadVerificada: boolean;
 };
 

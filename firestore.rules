@@ -21,9 +21,10 @@ service cloud.firestore {
     // ---------- Perfil público ----------
     match /users/{uid} {
       allow read: if registrado();
-      // El dueño solo puede cambiar su avatar y sus intereses.
+      // El dueño solo puede cambiar su avatar, sus intereses y el modo incógnito.
       allow update: if esYo(uid)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl', 'intereses'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl', 'intereses', 'incognito'])
+        && (!('incognito' in request.resource.data) || request.resource.data.incognito is bool)
         && (!('intereses' in request.resource.data)
             || (request.resource.data.intereses is list && request.resource.data.intereses.size() <= 10))
         && (!('avatarUrl' in request.resource.data)

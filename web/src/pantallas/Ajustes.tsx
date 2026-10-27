@@ -17,12 +17,23 @@ export function Ajustes() {
   const { perfil, privado, usuario, bloqueados } = useSesion();
   const { ir, abrirHoja, cerrarHoja, aviso } = useNav();
   // escaparate: activado salvo que el creador lo haya desactivado (las cuentas antiguas no lo tienen).
-  const [sw, setSw] = useState<Record<string, boolean>>({ escaparate: true, ...privado?.ajustes });
-  useEffect(() => { if (privado?.ajustes) setSw(privado.ajustes); }, [privado?.ajustes]);
+  const [sw, setSw] = useState<Record<string, boolean>>({ escaparate: true, ...privado?.ajustes, incognito: perfil?.incognito === true });
+  useEffect(() => { if (privado?.ajustes) setSw((s) => ({ ...s, ...privado.ajustes })); }, [privado?.ajustes]);
 
   async function alternar(k: string) {
     const nuevo = { ...sw, [k]: !sw[k] };
     setSw(nuevo);
+    // El modo incógnito es público (lo usan las listas para ocultar el perfil): va en users/{uid}.
+    if (k === "incognito") {
+      try {
+        await updateDoc(doc(db, "users", auth.currentUser!.uid), { incognito: nuevo[k] });
+        aviso(nuevo[k] ? "Modo incógnito activado" : "Modo incógnito desactivado");
+      } catch (e) {
+        setSw(sw);
+        aviso(errorDe(e).mensaje);
+      }
+      return;
+    }
     try {
       await api.guardarAjustes({ ajustes: { [k]: nuevo[k] } });
     } catch (e) {
@@ -50,6 +61,7 @@ export function Ajustes() {
     ["Privacidad", [
       { i: "msg", t: "Permitir comentarios", s: "Solo quien desbloqueó la foto", sw: "comentar" },
       { i: "spark", t: "Aparecer en \"Para ti\"", s: "Te sugerimos a otros jugadores", sw: "sugeridos" },
+      { i: "ban", t: "Modo incógnito", s: "Tu perfil no sale en el feed, Reels ni la web; solo te encuentran buscándote", sw: "incognito" },
       { i: "eye", t: "Aparecer en la web de Blurry", s: "Si estás entre los populares, tu tarjeta (foto de perfil) sale en la página de descarga", sw: "escaparate" },
       { i: "ban", t: "Cuentas bloqueadas", s: bloqueados.size ? `${bloqueados.size}` : "Ninguna", accion: () => abrirHoja(<HojaBloqueados />) },
     ]],

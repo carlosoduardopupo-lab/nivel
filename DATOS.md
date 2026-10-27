@@ -7,7 +7,7 @@ Convenciones:
 - "Día del juego" (intentos y vidas) = día en la hora de Nueva York (`America/New_York`), formato `AAAA-MM-DD`.
 
 ## users/{uid} — perfil público
-Lectura: usuarios registrados. Escritura del dueño solo en `avatarUrl` e `intereses`; el resto, solo Functions.
+Lectura: usuarios registrados. Escritura del dueño solo en `avatarUrl`, `intereses` e `incognito`; el resto, solo Functions.
 
 | Campo | Tipo | Notas |
 |---|---|---|
@@ -29,6 +29,7 @@ Lectura: usuarios registrados. Escritura del dueño solo en `avatarUrl` e `inter
 | esCreador | boolean | true desde su primera publicación aprobada (el feed solo muestra creadores) |
 | ultimaPublicacionEn | Timestamp \| null | para el filtro "Siguiendo" |
 | esVip | boolean | lo recalcula Functions |
+| incognito | boolean | modo incógnito: lo cambia el dueño; oculta el perfil del feed, Reels y el escaparate |
 | identidadVerificada | boolean | lo pone Functions (Stripe Connect) |
 | creadoEn | Timestamp | |
 
