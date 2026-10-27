@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "demo-nivel"
-  }
+    "default": "demo-nivel",
+    "prod": "blurry-78f0d"
+  },
+  "targets": {},
+  "etags": {}
 }
