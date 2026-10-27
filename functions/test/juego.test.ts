@@ -9,6 +9,7 @@ import { registrar } from "../src/cuenta.js";
 import { comentar, seguir } from "../src/social.js";
 import { bloquear, eliminarCuenta, reportarProblema, reportarReel } from "../src/seguridad.js";
 import { avisarVidasDevueltas } from "../src/notificaciones.js";
+import { eventoApp, eventoPublico, registrarVisita } from "../src/estadisticas.js";
 import { comentarReel, crearReel, editarReel, eliminarReel, meGustaReel } from "../src/reels.js";
 import { aprobarPublicacion } from "../src/moderacion.js";
 import { editarPregunta, eliminarPublicacion, misPreguntas } from "../src/publicaciones.js";
@@ -539,5 +540,30 @@ describe("notificaciones", () => {
     expect(await avisarVidasDevueltas(seg(60))).toBe(1);
     expect(await avisarVidasDevueltas(seg(120))).toBe(0);
     expect(await avisos(JUGADOR)).toMatchObject([{ tipo: "vidas", titulo: "¡Tus 3 vidas han vuelto!" }]);
+  });
+});
+
+describe("estadísticas", () => {
+  const dia = async () => (await db.doc("estadisticas/2026-10-27").get()).data() ?? {};
+  beforeEach(() => preparar());
+
+  it("cuenta intentos, aciertos y pagos del día", async () => {
+    const r0 = await empezarPregunta(JUGADOR, { postId: "p0" }, T0, sinAzar);
+    await responder(JUGADOR, { postId: "p0", opcion: r0.opciones.indexOf("bien0") }, seg(3));
+    await pagarRespuesta(JUGADOR, { postId: "p1" }, seg(10));
+    expect(await dia()).toMatchObject({ intentos: 1, aciertos: 1, pagos: 1, monedasGastadas: 3 });
+  });
+
+  it("un usuario activo cuenta una vez al día", async () => {
+    await registrarVisita(JUGADOR, T0);
+    await registrarVisita(JUGADOR, seg(3600));
+    await registrarVisita(CREADOR, T0);
+    expect((await dia()).activos).toBe(2);
+  });
+
+  it("solo acepta eventos conocidos", async () => {
+    await db.doc("estadisticas/2026-10-27").delete();
+    expect(await codigo(eventoApp({ tipo: "hackeo" }))).toBe("dato-invalido");
+    expect(await eventoPublico("nada")).toBe(false);
   });
 });

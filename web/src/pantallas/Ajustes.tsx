@@ -9,7 +9,7 @@ import { useNav } from "../nav";
 import { desactivarPush } from "../avisos";
 import { useSesion } from "../sesion";
 import { ActivarAvisos } from "./Notificaciones";
-import { INTERESES, nf, CORREO_SOPORTE } from "../util";
+import { INTERESES, nf, CORREO_SOPORTE, ADMINS } from "../util";
 
 type Fila = { i: string; t: string; s?: string; sw?: string; accion?: () => void };
 
@@ -58,6 +58,9 @@ export function Ajustes() {
       { i: "receipt", t: "Historial de compras", accion: () => abrirHoja(<HojaCompras />) },
       { i: "file", t: "Documentos de impuestos", s: "Formulario W-9 y 1099", accion: pronto("Documentos de impuestos") },
     ]],
+    ...(usuario && ADMINS.includes(usuario.uid) ? [["Administración", [
+      { i: "trophy", t: "Estadísticas de uso", s: "Usuarios, partidas, descargas…", accion: () => ir({ n: "estadisticas" }) },
+    ]] as [string, Fila[]]] : []),
     ["Ayuda", [
       { i: "help", t: "Centro de ayuda", accion: () => abrirHoja(<HojaAyuda />) },
       { i: "flag", t: "Reportar un problema", accion: () => abrirHoja(<HojaProblema />) },

@@ -78,6 +78,15 @@ describe("Firestore · publicaciones eliminadas", () => {
   });
 });
 
+describe("Firestore · estadísticas", () => {
+  it("solo las lee el administrador", async () => {
+    await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), "estadisticas", "2026-10-27"), { activos: 3 }));
+    await assertSucceeds(getDoc(doc(como("y4KUHbYPChSM2QFa7VMoAyX3a952").firestore(), "estadisticas", "2026-10-27")));
+    await assertFails(getDoc(doc(como(JUGADOR).firestore(), "estadisticas", "2026-10-27")));
+    await assertFails(setDoc(doc(como("y4KUHbYPChSM2QFa7VMoAyX3a952").firestore(), "estadisticas", "x"), { activos: 1 }));
+  });
+});
+
 describe("Firestore · bloqueos", () => {
   it("solo el dueño ve a quién bloqueó; nadie lo escribe desde el cliente", async () => {
     await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), "users", JUGADOR, "bloqueados", OTRO), { creadoEn: Timestamp.now() }));

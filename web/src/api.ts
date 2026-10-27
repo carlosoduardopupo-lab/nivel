@@ -24,6 +24,8 @@ export const api = {
   eliminarReel: llamar<{ reelId: string }, void>("eliminarReel"),
   comentarReel: llamar<{ reelId: string; texto: string; respondeA?: string }, { id: string }>("comentarReel"),
   meGustaReel: llamar<{ reelId: string; valor: boolean }, { meGusta: boolean }>("meGustaReel"),
+  registrarVisita: llamar<Record<string, never>, void>("registrarVisita"),
+  evento: llamar<{ tipo: "compartir" | "instalar" }, void>("evento"),
   registrarDispositivo: llamar<{ token: string }, void>("registrarDispositivo"),
   borrarDispositivo: llamar<{ token: string }, void>("borrarDispositivo"),
   marcarLeidas: llamar<Record<string, never>, void>("marcarLeidas"),

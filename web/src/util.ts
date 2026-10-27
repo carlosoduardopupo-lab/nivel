@@ -15,6 +15,9 @@ export function borrarReferido() {
   try { localStorage.removeItem(CLAVE_REF); } catch { /* nada */ }
 }
 
+// Administradores (también en firestore.rules): ven el panel de estadísticas.
+export const ADMINS = ["y4KUHbYPChSM2QFa7VMoAyX3a952"]; // @carli
+
 // Correo de soporte (también en /terminos y /privacidad).
 export const CORREO_SOPORTE = "blurrysupport@gmail.com";
 

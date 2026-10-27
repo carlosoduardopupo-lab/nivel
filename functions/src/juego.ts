@@ -8,6 +8,7 @@ import { FieldValue, Timestamp, type DocumentReference, type Transaction } from 
 import { bloqueoHasta, db, fallo, leerPrivado, mezclar, vidasActuales, type Privado } from "./comun.js";
 import { avisarReferido, contarReferido, leerInvitador, type ReferidoContado } from "./referidos.js";
 import { notificar } from "./notificaciones.js";
+import { contar } from "./estadisticas.js";
 import { FASE_PRUEBA, MARGEN_RESPUESTA_MS, MILESIMAS_POR_MONEDA, DIAS_EN_ESPERA, PREGUNTAS_POR_POST, VIDAS_POR_DIA, diaDe } from "./reglas.js";
 
 type Post = {
@@ -107,6 +108,7 @@ export type RespuestaEmpezar = {
 export async function empezarPregunta(uid: string, datos: { postId: string }, ahora = new Date(), aleatorio = Math.random): Promise<RespuestaEmpezar> {
   const { postId } = datos;
   let referido: ReferidoContado | null = null;
+  let intentoNuevo = false;
   const res = await db().runTransaction(async (tx) => {
     const r = refs(uid, postId);
     const post = await leerPost(tx, r.post);
@@ -157,6 +159,7 @@ export async function empezarPregunta(uid: string, datos: { postId: string }, ah
     tx.update(db().doc(`users/${post.creadorId}`), { totalIntentos: FieldValue.increment(1), totalFallos: FieldValue.increment(1) });
     // Su primera foto jugada: si vino invitado, la invitación cuenta ahora.
     referido = contarReferido(tx, uid, invitador, ahora);
+    intentoNuevo = true;
 
     return {
       pregunta: p.texto,
@@ -168,6 +171,7 @@ export async function empezarPregunta(uid: string, datos: { postId: string }, ah
     };
   });
   await avisarReferido(uid, referido);
+  if (intentoNuevo) await contar({ intentos: 1 }, ahora);
   return res;
 }
 
@@ -183,7 +187,7 @@ export type RespuestaResponder = {
 
 export async function responder(uid: string, datos: { postId: string; opcion: number }, ahora = new Date()): Promise<RespuestaResponder> {
   const { postId, opcion } = datos;
-  return db().runTransaction(async (tx) => {
+  const res = await db().runTransaction(async (tx): Promise<RespuestaResponder> => {
     const r = refs(uid, postId);
     const intentoSnap = await tx.get(r.intento);
     const intento = intentoSnap.data() as Intento | undefined;
@@ -223,6 +227,8 @@ export async function responder(uid: string, datos: { postId: string; opcion: nu
     tx.update(db().doc(`users/${post.creadorId}`), { totalDesbloqueos: FieldValue.increment(1), totalFallos: FieldValue.increment(-1) });
     return { correcta: true, motivo: null, vidas: v.vidas, vidasVuelvenEn: null, preguntasRestantes: restantes };
   });
+  if (res.correcta) await contar({ aciertos: 1 }, ahora);
+  return res;
 }
 
 // ---------------------------------------------------------------------------
@@ -294,6 +300,7 @@ export async function pagarRespuesta(uid: string, datos: { postId: string }, aho
   });
   await avisarReferido(uid, referido);
   const a = aviso as { creadorId: string; precio: number } | null;
+  if (a) await contar({ pagos: 1, monedasGastadas: a.precio }, ahora);
   if (a) {
     const username = (await db().doc(`users/${uid}`).get()).get("username") ?? "Alguien";
     await notificar(a.creadorId, { tipo: "ganancias", titulo: `@${username} desbloqueó tu foto`, texto: `+${a.precio} ${a.precio === 1 ? "moneda" : "monedas"}`, url: "/?ir=perfil", de: uid });

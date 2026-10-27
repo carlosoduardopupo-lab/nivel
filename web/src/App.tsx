@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { Cargando } from "./componentes";
 import { collection, getDocs, limit, query, where } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import { api } from "./api";
 import { renovarPush } from "./avisos";
 import { ProveedorNav, useNav } from "./nav";
 import { Ajustes } from "./pantallas/Ajustes";
 import { Crear } from "./pantallas/Crear";
 import { Creador } from "./pantallas/Creador";
 import { Feed, elegirFiltroInicial } from "./pantallas/Feed";
+import { Estadisticas } from "./pantallas/Estadisticas";
 import { Perfil } from "./pantallas/Perfil";
 import { CrearReel, Reels } from "./pantallas/Reels";
 import { Registro } from "./pantallas/Registro";
@@ -18,7 +20,8 @@ import { ProveedorSesion, useSesion } from "./sesion";
 function EnlaceCompartido() {
   const { ir } = useNav();
   // Con permiso de avisos ya concedido, renueva el token de este dispositivo.
-  useEffect(() => { renovarPush(); }, []);
+  // Y cuenta la visita del día (usuarios activos).
+  useEffect(() => { renovarPush(); api.registrarVisita({}).catch(() => {}); }, []);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     // Enlaces de las notificaciones: /?ir=perfil|reels|feed
@@ -68,6 +71,7 @@ function Contenido() {
           case "reels": return <Reels key={(p.autorId ?? "") + (p.reelId ?? "")} autorId={p.autorId} reelId={p.reelId} />;
           case "crearReel": return <CrearReel />;
           case "perfil": return <Perfil />;
+          case "estadisticas": return <Estadisticas />;
           case "crear": return <Crear />;
           case "tienda": return <Tienda />;
           case "retiro": return <Retiro />;

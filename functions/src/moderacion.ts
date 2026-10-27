@@ -1,6 +1,7 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { db } from "./comun.js";
 import { avisarFotoNueva } from "./notificaciones.js";
+import { contar } from "./estadisticas.js";
 import { precioPromedio } from "./reglas.js";
 
 /**
@@ -36,6 +37,7 @@ export async function aprobarPublicacion(postId: string, ahora = new Date()): Pr
     return { orden };
   });
   await avisarFotoNueva(creadorId);
+  await contar({ publicaciones: 1 }, ahora);
   return r;
 }
 

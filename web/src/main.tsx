@@ -16,4 +16,6 @@ createRoot(document.getElementById("root")!).render(
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
+// Cuenta las instalaciones como app (estadísticas; no necesita sesión).
+if (import.meta.env.PROD) addEventListener("appinstalled", () => { fetch("/api/evento?t=instalar").catch(() => {}); });
 

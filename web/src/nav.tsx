@@ -7,6 +7,7 @@ export type Pantalla =
   | { n: "reels"; autorId?: string; reelId?: string }
   | { n: "crearReel" }
   | { n: "perfil" }
+  | { n: "estadisticas" }
   | { n: "crear" }
   | { n: "tienda" }
   | { n: "retiro" }

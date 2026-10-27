@@ -1,6 +1,7 @@
 import { FieldValue, Timestamp, type DocumentReference } from "firebase-admin/firestore";
 import { bloqueadoPor, db, fallo, texto } from "./comun.js";
 import { avisarComentario } from "./notificaciones.js";
+import { contar } from "./estadisticas.js";
 import { MAX_COMENTARIO, MOTIVOS_REPORTE, REPORTES_PARA_OCULTAR } from "./reglas.js";
 
 export async function exigirPerfil(uid: string): Promise<string> {
@@ -12,6 +13,7 @@ export async function exigirPerfil(uid: string): Promise<string> {
 export async function seguir(uid: string, datos: { creadorId: string }): Promise<void> {
   const { creadorId } = datos;
   if (creadorId === uid) fallo("dato-invalido", "No puedes seguirte a ti mismo.", "invalid-argument");
+  let nuevo = false;
   await db().runTransaction(async (tx) => {
     const ref = db().doc(`users/${uid}/siguiendo/${creadorId}`);
     const [yo, creador, ya] = await Promise.all([tx.get(db().doc(`users/${uid}`)), tx.get(db().doc(`users/${creadorId}`)), tx.get(ref)]);
@@ -19,11 +21,13 @@ export async function seguir(uid: string, datos: { creadorId: string }): Promise
     if (!creador.exists) fallo("no-existe", "Ese usuario no existe.", "not-found");
     if (await bloqueadoPor(creadorId, uid, tx)) fallo("bloqueado", "No puedes seguir a este usuario.", "permission-denied");
     if (ya.exists) return;
+    nuevo = true;
     // creadorId: para encontrar a los seguidores de un creador (avisos de fotos nuevas).
     tx.set(ref, { creadorId, creadoEn: Timestamp.now() });
     tx.update(creador.ref, { seguidores: FieldValue.increment(1) });
     tx.update(yo.ref, { siguiendo: FieldValue.increment(1) });
   });
+  if (nuevo) await contar({ seguimientos: 1 });
 }
 
 export async function dejarDeSeguir(uid: string, datos: { creadorId: string }): Promise<void> {
@@ -80,6 +84,7 @@ export async function comentar(uid: string, datos: { postId: string; texto: unkn
   }
   const r = await escribirComentario(refPost, uid, username, t, datos.respondeA);
   await avisarComentario({ autorId: uid, autorUsername: username, duenoId: creadorId, texto: t, respondeAUid: r.respondeAUid, reel: false });
+  await contar({ comentarios: 1 });
   return { id: r.id };
 }
 
