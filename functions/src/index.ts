@@ -1,11 +1,13 @@
 import { initializeApp } from "firebase-admin/app";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { HttpsError, onCall, onRequest, type CallableRequest } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onObjectFinalized } from "firebase-functions/v2/storage";
 import { id } from "./comun.js";
 import * as cuenta from "./cuenta.js";
 import * as escaparate from "./escaparate.js";
 import * as juego from "./juego.js";
+import * as notificaciones from "./notificaciones.js";
 import * as publicaciones from "./publicaciones.js";
 import * as reels from "./reels.js";
 import * as seguridad from "./seguridad.js";
@@ -110,3 +112,11 @@ export const reportarReel = onCall((req) => {
 });
 export const reportarProblema = onCall((req) => seguridad.reportarProblema(uidDe(req), { texto: datos(req).texto }));
 export const eliminarCuenta = onCall({ timeoutSeconds: 300 }, (req) => seguridad.eliminarCuenta(uidDe(req)));
+
+// Notificaciones
+export const registrarDispositivo = onCall((req) => notificaciones.registrarDispositivo(uidDe(req), { token: datos(req).token }));
+export const borrarDispositivo = onCall((req) => notificaciones.borrarDispositivo(uidDe(req), { token: datos(req).token }));
+export const marcarLeidas = onCall((req) => notificaciones.marcarLeidas(uidDe(req)));
+export const avisarVidas = onSchedule({ schedule: "every 15 minutes", timeZone: "America/New_York" }, async () => {
+  await notificaciones.avisarVidasDevueltas();
+});

@@ -59,6 +59,12 @@ Lectura: solo el dueño. Escritura: solo Functions.
 | monedasGanadas | number — fase de prueba: monedas gastadas en sus fotos que se le sumaron |
 | monedasReferidos | number — monedas ganadas por referidos (tope 1.000) |
 
+### private/{uid}/notificaciones/{id}
+`{ tipo: "nuevas" | "vidas" | "comentarios" | "ganancias", titulo, texto, url, de?, leida, creadoEn }`. Lectura: dueño. Solo Functions (`marcarLeidas` las marca como leídas).
+
+### private/{uid}/dispositivos/{token}
+`{ creadoEn }`. Tokens de push (FCM) de sus dispositivos. Solo Functions; los caducados se borran al enviar.
+
 ### private/{uid}/referidos/{uidNuevo}
 `{ estado: "pendiente" | "contado", monedas, recargaVidas, creadoEn, contadoEn }`. Solo Functions. Se crea "pendiente" al registrarse el invitado y pasa a "contado" cuando juega su primera foto.
 
@@ -121,7 +127,7 @@ Lectura: dueño. Solo Functions.
 `{ autorId, username, texto, estado: "abierto" | "resuelto", creadoEn }`. Reportes de problemas desde Ajustes. Nadie lo lee desde el cliente.
 
 ## users/{uid}/siguiendo/{creadorId}
-`{ creadoEn }`. Lectura: registrados. Solo Functions (mantiene el contador `seguidores`).
+`{ creadorId, creadoEn }` (`creadorId` para avisar a los seguidores de un creador). Lectura: registrados. Solo Functions (mantiene el contador `seguidores`).
 
 ## reportes/{id}
 Id: `{postId}_{uid}` (un reporte por persona y foto) o `reel_{reelId}_{uid}` con `tipo: "reel"` para reels. `{ postId, autorId, motivo: "inapropiado" | "menor" | "robada" | "respuesta" | "otro", detalle, estado: "abierto" | "cerrado", creadoEn }`.

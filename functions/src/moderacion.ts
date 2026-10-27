@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { db } from "./comun.js";
+import { avisarFotoNueva } from "./notificaciones.js";
 import { precioPromedio } from "./reglas.js";
 
 /**
@@ -8,12 +9,14 @@ import { precioPromedio } from "./reglas.js";
  * adelante, la moderación automática.
  */
 export async function aprobarPublicacion(postId: string, ahora = new Date()): Promise<{ orden: number }> {
-  return db().runTransaction(async (tx) => {
+  let creadorId = "";
+  const r = await db().runTransaction(async (tx) => {
     const refPost = db().doc(`posts/${postId}`);
     const post = await tx.get(refPost);
     if (!post.exists) throw new Error(`No existe la publicación ${postId}`);
     if (post.get("estado") !== "revision") throw new Error(`La publicación ${postId} está en estado "${post.get("estado")}", no en revisión`);
-    const refCreador = db().doc(`users/${post.get("creadorId")}`);
+    creadorId = post.get("creadorId");
+    const refCreador = db().doc(`users/${creadorId}`);
     const [creador, otras] = await Promise.all([
       tx.get(refCreador),
       tx.get(db().collection("posts").where("creadorId", "==", post.get("creadorId")).where("estado", "==", "aprobada")),
@@ -32,6 +35,8 @@ export async function aprobarPublicacion(postId: string, ahora = new Date()): Pr
     });
     return { orden };
   });
+  await avisarFotoNueva(creadorId);
+  return r;
 }
 
 export async function rechazarPublicacion(postId: string, motivo: string): Promise<void> {

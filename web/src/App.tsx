@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Cargando } from "./componentes";
 import { collection, getDocs, limit, query, where } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import { renovarPush } from "./avisos";
 import { ProveedorNav, useNav } from "./nav";
 import { Ajustes } from "./pantallas/Ajustes";
 import { Crear } from "./pantallas/Crear";
@@ -16,8 +17,18 @@ import { ProveedorSesion, useSesion } from "./sesion";
 /** Abre el perfil de un enlace compartido (/?u=usuario) y limpia la dirección. */
 function EnlaceCompartido() {
   const { ir } = useNav();
+  // Con permiso de avisos ya concedido, renueva el token de este dispositivo.
+  useEffect(() => { renovarPush(); }, []);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
+    // Enlaces de las notificaciones: /?ir=perfil|reels|feed
+    const destino = params.get("ir");
+    if (destino) {
+      history.replaceState(null, "", location.pathname);
+      if (destino === "perfil") ir({ n: "perfil" });
+      else if (destino === "reels") ir({ n: "reels" });
+      return;
+    }
     if (params.has("ref")) history.replaceState(null, "", location.pathname + (params.has("u") ? `?u=${encodeURIComponent(params.get("u")!)}` : ""));
     const u = params.get("u")?.trim().toLowerCase().replace(/^@/, "");
     if (!u) return;

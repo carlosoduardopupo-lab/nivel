@@ -6,7 +6,8 @@
 // pregunta cuenta como fallo y no sirve para ver la pregunta gratis.
 import { FieldValue, Timestamp, type DocumentReference, type Transaction } from "firebase-admin/firestore";
 import { bloqueoHasta, db, fallo, leerPrivado, mezclar, vidasActuales, type Privado } from "./comun.js";
-import { contarReferido, leerInvitador } from "./referidos.js";
+import { avisarReferido, contarReferido, leerInvitador, type ReferidoContado } from "./referidos.js";
+import { notificar } from "./notificaciones.js";
 import { FASE_PRUEBA, MARGEN_RESPUESTA_MS, MILESIMAS_POR_MONEDA, DIAS_EN_ESPERA, PREGUNTAS_POR_POST, VIDAS_POR_DIA, diaDe } from "./reglas.js";
 
 type Post = {
@@ -105,7 +106,8 @@ export type RespuestaEmpezar = {
 
 export async function empezarPregunta(uid: string, datos: { postId: string }, ahora = new Date(), aleatorio = Math.random): Promise<RespuestaEmpezar> {
   const { postId } = datos;
-  return db().runTransaction(async (tx) => {
+  let referido: ReferidoContado | null = null;
+  const res = await db().runTransaction(async (tx) => {
     const r = refs(uid, postId);
     const post = await leerPost(tx, r.post);
     await comprobarNivel(tx, uid, postId, post);
@@ -154,7 +156,7 @@ export async function empezarPregunta(uid: string, datos: { postId: string }, ah
     tx.update(r.post, { intentos: FieldValue.increment(1), fallos: FieldValue.increment(1) });
     tx.update(db().doc(`users/${post.creadorId}`), { totalIntentos: FieldValue.increment(1), totalFallos: FieldValue.increment(1) });
     // Su primera foto jugada: si vino invitado, la invitación cuenta ahora.
-    contarReferido(tx, uid, invitador, ahora);
+    referido = contarReferido(tx, uid, invitador, ahora);
 
     return {
       pregunta: p.texto,
@@ -165,6 +167,8 @@ export async function empezarPregunta(uid: string, datos: { postId: string }, ah
       vidas,
     };
   });
+  await avisarReferido(uid, referido);
+  return res;
 }
 
 // ---------------------------------------------------------------------------
@@ -227,7 +231,9 @@ export type RespuestaPagar = { respuesta: string; pregunta: string; monedas: num
 
 export async function pagarRespuesta(uid: string, datos: { postId: string }, ahora = new Date()): Promise<RespuestaPagar> {
   const { postId } = datos;
-  return db().runTransaction(async (tx) => {
+  let referido: ReferidoContado | null = null;
+  let aviso: { creadorId: string; precio: number } | null = null;
+  const res = await db().runTransaction(async (tx) => {
     const r = refs(uid, postId);
     const post = await leerPost(tx, r.post);
     const siguiente = await comprobarNivel(tx, uid, postId, post);
@@ -282,7 +288,15 @@ export async function pagarRespuesta(uid: string, datos: { postId: string }, aho
       });
     }
 
-    contarReferido(tx, uid, invitador, ahora);
+    referido = contarReferido(tx, uid, invitador, ahora);
+    aviso = { creadorId: post.creadorId, precio: post.precio };
     return { respuesta: p.opciones[p.correcta], pregunta: p.texto, monedas };
   });
+  await avisarReferido(uid, referido);
+  const a = aviso as { creadorId: string; precio: number } | null;
+  if (a) {
+    const username = (await db().doc(`users/${uid}`).get()).get("username") ?? "Alguien";
+    await notificar(a.creadorId, { tipo: "ganancias", titulo: `@${username} desbloqueó tu foto`, texto: `+${a.precio} ${a.precio === 1 ? "moneda" : "monedas"}`, url: "/?ir=perfil", de: uid });
+  }
+  return res;
 }

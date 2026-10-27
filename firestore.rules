@@ -67,6 +67,15 @@ service cloud.firestore {
         allow read: if esYo(uid);
         allow write: if false;
       }
+      // Avisos de la campana: los lee el dueño; los escribe Functions.
+      match /notificaciones/{id} {
+        allow read: if esYo(uid);
+        allow write: if false;
+      }
+      // Tokens de push: solo Functions.
+      match /dispositivos/{token} {
+        allow read, write: if false;
+      }
     }
 
     // ---------- Reels (gratis; los escribe solo Functions) ----------

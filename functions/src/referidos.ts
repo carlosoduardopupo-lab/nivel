@@ -4,6 +4,7 @@
 // - al tercer amigo gana 500 monedas de regalo, una sola vez.
 import { FieldValue, Timestamp, type DocumentSnapshot, type Transaction } from "firebase-admin/firestore";
 import { db, type Privado } from "./comun.js";
+import { notificar } from "./notificaciones.js";
 import { MAX_MONEDAS_REFERIDOS, MONEDAS_POR_REFERIDO, VIDAS_POR_DIA, diaDe } from "./reglas.js";
 
 /** Lee a quien invitó al jugador si su invitación aún no ha contado (lectura: va antes de escribir). */
@@ -13,9 +14,11 @@ export async function leerInvitador(tx: Transaction, privado: Privado): Promise<
   return snap.exists ? snap : null;
 }
 
-/** Da los premios a quien invitó y marca la invitación como contada. */
-export function contarReferido(tx: Transaction, uid: string, invitador: DocumentSnapshot | null, ahora: Date): void {
-  if (!invitador) return;
+export type ReferidoContado = { invitadorId: string; recarga: boolean; monedas: number };
+
+/** Da los premios a quien invitó y marca la invitación como contada. Devuelve qué se dio (para avisar). */
+export function contarReferido(tx: Transaction, uid: string, invitador: DocumentSnapshot | null, ahora: Date): ReferidoContado | null {
+  if (!invitador) return null;
   const hoy = diaDe(ahora);
   const yaInvitados: number = invitador.get("referidos") ?? 0;
   const monedas = Math.max(0, Math.min(MONEDAS_POR_REFERIDO[yaInvitados] ?? 0, MAX_MONEDAS_REFERIDOS - (invitador.get("monedasReferidos") ?? 0)));
@@ -30,4 +33,18 @@ export function contarReferido(tx: Transaction, uid: string, invitador: Document
   });
   tx.set(invitador.ref.collection("referidos").doc(uid), { estado: "contado", monedas, recargaVidas: recarga, contadoEn: Timestamp.fromDate(ahora) }, { merge: true });
   tx.update(db().doc(`private/${uid}`), { referidoContado: true });
+  return { invitadorId: invitador.id, recarga, monedas };
+}
+
+/** Aviso a quien invitó, después de la transacción. */
+export async function avisarReferido(uid: string, r: ReferidoContado | null): Promise<void> {
+  if (!r) return;
+  const username = (await db().doc(`users/${uid}`).get()).get("username") ?? "tu amigo";
+  const premio = [r.recarga ? "tus 3 vidas" : "", r.monedas ? `${r.monedas} monedas` : ""].filter(Boolean).join(" y ");
+  await notificar(r.invitadorId, {
+    tipo: "vidas",
+    titulo: `@${username} ya juega en Blurry gracias a ti`,
+    texto: premio ? `Ganaste ${premio}.` : "Sigue invitando: cada amigo cuenta.",
+    url: "/?ir=feed",
+  });
 }
