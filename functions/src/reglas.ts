@@ -20,7 +20,7 @@ export const RETIRO_MINIMO_MILESIMAS = 50_000;
 export const MIN_DESBLOQUEOS_PARA_PORCENTAJE = 20;
 
 export const PAQUETES = {
-  p100: { monedas: 100, centavos: 99 },
+  p150: { monedas: 150, centavos: 199 },
   p550: { monedas: 550, centavos: 499 },
   p1150: { monedas: 1150, centavos: 999 },
   p2400: { monedas: 2400, centavos: 1999 },

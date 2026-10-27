@@ -47,7 +47,7 @@ Estas reglas mandan sobre todo el proyecto. Si el código y este archivo no coin
 
 ## Monedas y dinero
 - **Monedas de bienvenida:** cada usuario nuevo recibe 100 monedas de regalo. Sirven para ver fotos, pero **no generan pago al creador**. Al pagar se gastan primero las de regalo.
-- Paquetes: 100 por $0.99; 550 por $4.99 (+10%); 1.150 por $9.99 (+15%); 2.400 por $19.99 (+20%). Las monedas no caducan.
+- Paquetes: 150 por $1.99; 550 por $4.99 (+10%); 1.150 por $9.99 (+15%); 2.400 por $19.99 (+20%). Las monedas no caducan.
 - Pago al creador: 5 milésimas de dólar ($0.005) por cada moneda **comprada** gastada en sus publicaciones.
 - Lo ganado queda "en espera" 7 días antes de estar disponible.
 - Retiro mínimo: $50. La comisión del retiro ($2 + 0.25% + $0.25) se descuenta al creador.

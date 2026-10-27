@@ -7,7 +7,7 @@ import { comisionRetiro, dinero, fmtFalta, nf } from "../util";
 
 // Los paquetes reales se definen en el servidor (Fase 3). Aquí solo se muestran.
 const PAQUETES = [
-  { id: "p100", m: 100, p: 0.99, x: 0 },
+  { id: "p150", m: 150, p: 1.99, x: 0 },
   { id: "p550", m: 550, p: 4.99, x: 10 },
   { id: "p1150", m: 1150, p: 9.99, x: 15, tag: "MÁS POPULAR", col: "var(--rosa)" },
   { id: "p2400", m: 2400, p: 19.99, x: 20, tag: "MEJOR PRECIO", col: "var(--verde)" },
