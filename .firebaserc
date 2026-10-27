@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-nivel"
+    "default": "demo-nivel",
+    "prod": "nivel-juego"
   }
 }
