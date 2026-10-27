@@ -6,7 +6,9 @@ import { Barra, HojaReglasReferidos, TituloHoja, Avatar, HojaBloquear } from "..
 import { auth, db } from "../firebase";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
+import { desactivarPush } from "../avisos";
 import { useSesion } from "../sesion";
+import { ActivarAvisos } from "./Notificaciones";
 import { INTERESES, nf, CORREO_SOPORTE } from "../util";
 
 type Fila = { i: string; t: string; s?: string; sw?: string; accion?: () => void };
@@ -39,6 +41,7 @@ export function Ajustes() {
       { i: "spark", t: "Mis intereses", s: perfil?.intereses?.join(", ") || "Ninguno", accion: () => abrirHoja(<HojaIntereses />) },
     ]],
     ["Notificaciones", [
+      { i: "bell", t: "En este dispositivo", s: "Permitir avisos", accion: () => abrirHoja(<><TituloHoja>Avisos en este dispositivo</TituloHoja><ActivarAvisos /></>) },
       { i: "photo", t: "Fotos nuevas de mis seguidos", sw: "nuevas" },
       { i: "heart", t: "Vidas recuperadas", sw: "vidas" },
       { i: "coin", t: "Ganancias y retiros", sw: "ganancias" },
@@ -93,7 +96,7 @@ export function Ajustes() {
           <>
             <p className="h2" style={{ fontSize: 20, textAlign: "center" }}>¿Cerrar sesión?</p>
             <p className="sub" style={{ textAlign: "center" }}>Tus monedas, vidas y colección se quedan guardadas.</p>
-            <button className="btn dark" style={{ marginTop: 16 }} onClick={() => { cerrarHoja(); signOut(auth); }}>Cerrar sesión</button>
+            <button className="btn dark" style={{ marginTop: 16 }} onClick={async () => { cerrarHoja(); await desactivarPush(); signOut(auth); }}>Cerrar sesión</button>
             <button className="btn" style={{ marginTop: 6, color: "var(--muted)" }} onClick={cerrarHoja}>Cancelar</button>
           </>,
         )}><Ic n="out" /> Cerrar sesión</button>

@@ -50,6 +50,12 @@ Estas reglas mandan sobre todo el proyecto. Si el código y este archivo no coin
 - Sale todo creador popular salvo que desactive "Aparecer en la web de Blurry" en Ajustes (`ajustes.escaparate`, activado por defecto).
 - Solo se publica esa primera foto (reducida); nunca las demás fotos de su fila, preguntas ni respuestas. Lo sirve la función `escaparatePublico` en `/api/escaparate`.
 
+## Notificaciones
+- Campana en el feed con los avisos (se marcan como leídos al abrirla) y avisos push en el dispositivo si el usuario lo permite (Ajustes → Notificaciones → En este dispositivo, o desde la campana).
+- Tipos y su interruptor en Ajustes: **fotos nuevas** de quien sigues (al aprobarse), **vidas** (cuando vuelven tras las 24 h y cuando un amigo invitado cuenta), **comentarios** en tus fotos/reels y respuestas a los tuyos (desactivado por defecto), **ganancias** (alguien desbloqueó tu foto pagando).
+- No llegan avisos de usuarios bloqueados. En iPhone, el push solo funciona con Blurry añadida a la pantalla de inicio.
+- Lógica en `functions/src/notificaciones.ts`; la tarea `avisarVidas` corre cada 15 minutos.
+
 ## Seguridad y cuenta
 - **Bloquear**: desde el perfil de alguien (⋯) o un reel. Quien bloquea deja de ver sus fotos, reels, comentarios y en la búsqueda; se rompen los seguimientos en los dos sentidos y el bloqueado no puede seguirle ni comentar en sus fotos o reels. No se avisa. Se deshace en Ajustes → Cuentas bloqueadas.
 - **Reportar reels**: como las fotos (inapropiado, menor, robado, otro); con 3 reportes de personas distintas el reel se oculta hasta revisarlo (`npm run moderar -- reels`).

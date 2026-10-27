@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp, type DocumentReference } from "firebase-admin/firestore";
 import { bloqueadoPor, db, fallo, texto } from "./comun.js";
+import { avisarComentario } from "./notificaciones.js";
 import { MAX_COMENTARIO, MOTIVOS_REPORTE, REPORTES_PARA_OCULTAR } from "./reglas.js";
 
 export async function exigirPerfil(uid: string): Promise<string> {
@@ -18,7 +19,8 @@ export async function seguir(uid: string, datos: { creadorId: string }): Promise
     if (!creador.exists) fallo("no-existe", "Ese usuario no existe.", "not-found");
     if (await bloqueadoPor(creadorId, uid, tx)) fallo("bloqueado", "No puedes seguir a este usuario.", "permission-denied");
     if (ya.exists) return;
-    tx.set(ref, { creadoEn: Timestamp.now() });
+    // creadorId: para encontrar a los seguidores de un creador (avisos de fotos nuevas).
+    tx.set(ref, { creadorId, creadoEn: Timestamp.now() });
     tx.update(creador.ref, { seguidores: FieldValue.increment(1) });
     tx.update(yo.ref, { siguiendo: FieldValue.increment(1) });
   });
@@ -76,23 +78,27 @@ export async function comentar(uid: string, datos: { postId: string; texto: unkn
     const priv = await db().doc(`private/${creadorId}`).get();
     if (priv.get("ajustes.comentar") === false) fallo("comentarios-cerrados", "Este creador no permite comentarios.");
   }
-  return escribirComentario(refPost, uid, username, t, datos.respondeA);
+  const r = await escribirComentario(refPost, uid, username, t, datos.respondeA);
+  await avisarComentario({ autorId: uid, autorUsername: username, duenoId: creadorId, texto: t, respondeAUid: r.respondeAUid, reel: false });
+  return { id: r.id };
 }
 
 /** Guarda un comentario (o respuesta) en `{padre}/comentarios` y sube su contador. Lo usan fotos y reels. */
-export async function escribirComentario(refPadre: DocumentReference, uid: string, username: string, t: string, respondeA?: string): Promise<{ id: string }> {
+export async function escribirComentario(refPadre: DocumentReference, uid: string, username: string, t: string, respondeA?: string): Promise<{ id: string; respondeAUid?: string }> {
   let respuesta: { respondeA: string; respondeAUsername: string } | null = null;
+  let respondeAUid: string | undefined;
   if (respondeA) {
     const padre = await refPadre.collection("comentarios").doc(respondeA).get();
     if (!padre.exists) fallo("no-existe", "Ese comentario ya no existe.", "not-found");
     respuesta = { respondeA: padre.get("respondeA") ?? padre.id, respondeAUsername: padre.get("username") };
+    respondeAUid = padre.get("autorId");
   }
   const ref = refPadre.collection("comentarios").doc();
   const lote = db().batch();
   lote.set(ref, { autorId: uid, username, texto: t, creadoEn: Timestamp.now(), ...respuesta });
   lote.update(refPadre, { comentarios: FieldValue.increment(1) });
   await lote.commit();
-  return { id: ref.id };
+  return { id: ref.id, respondeAUid };
 }
 
 export async function reportar(uid: string, datos: { postId: string; motivo: unknown; detalle?: unknown }): Promise<void> {

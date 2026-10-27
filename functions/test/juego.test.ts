@@ -8,6 +8,7 @@ import { empezarPregunta, pagarRespuesta, responder } from "../src/juego.js";
 import { registrar } from "../src/cuenta.js";
 import { comentar, seguir } from "../src/social.js";
 import { bloquear, eliminarCuenta, reportarProblema, reportarReel } from "../src/seguridad.js";
+import { avisarVidasDevueltas } from "../src/notificaciones.js";
 import { comentarReel, crearReel, editarReel, eliminarReel, meGustaReel } from "../src/reels.js";
 import { aprobarPublicacion } from "../src/moderacion.js";
 import { editarPregunta, eliminarPublicacion, misPreguntas } from "../src/publicaciones.js";
@@ -492,5 +493,51 @@ describe("eliminarCuenta", () => {
     // Su respuesta se borra y el contador baja; el comentario del jugador se queda.
     expect((await db.doc("posts/p0").get()).get("comentarios")).toBe(1);
     expect((await db.doc(`users/${JUGADOR}`).get()).get("seguidores")).toBe(0);
+  });
+});
+
+describe("notificaciones", () => {
+  const avisos = async (uid: string) => (await db.collection(`private/${uid}/notificaciones`).orderBy("creadoEn").get()).docs.map((d) => d.data());
+  beforeEach(async () => {
+    await preparar();
+    await db.doc(`users/${JUGADOR}`).update({ seguidores: 0, siguiendo: 0 });
+    await db.doc(`users/${CREADOR}`).update({ seguidores: 0, siguiendo: 0, numPublicaciones: 3 });
+  });
+
+  it("los seguidores reciben aviso de fotos nuevas al aprobarse", async () => {
+    await seguir(JUGADOR, { creadorId: CREADOR });
+    await db.doc("posts/nueva").set({ creadorId: CREADOR, precio: 2, estado: "revision", oculta: false });
+    await aprobarPublicacion("nueva");
+    expect(await avisos(JUGADOR)).toMatchObject([{ tipo: "nuevas", titulo: "@creador subió una foto nueva", url: "/?u=creador", leida: false }]);
+  });
+
+  it("el creador recibe aviso al desbloquear su foto pagando", async () => {
+    await pagarRespuesta(JUGADOR, { postId: "p0" }, T0);
+    expect(await avisos(CREADOR)).toMatchObject([{ tipo: "ganancias", titulo: "@jugador desbloqueó tu foto", texto: "+1 moneda" }]);
+  });
+
+  it("comentarios: solo si el dueño los activó, y la respuesta avisa a quien comentó", async () => {
+    await pagarRespuesta(JUGADOR, { postId: "p0" }, T0);
+    const { id } = await comentar(JUGADOR, { postId: "p0", texto: "¡Qué foto!" });
+    expect((await avisos(CREADOR)).filter((a) => a.tipo === "comentarios")).toHaveLength(0); // desactivados por defecto
+    await db.doc(`private/${CREADOR}`).update({ "ajustes.comentarios": true });
+    await db.doc(`private/${JUGADOR}`).update({ "ajustes.comentarios": true });
+    await comentar(JUGADOR, { postId: "p0", texto: "Otra vez yo" });
+    await comentar(CREADOR, { postId: "p0", texto: "¡Gracias!", respondeA: id });
+    expect((await avisos(CREADOR)).filter((a) => a.tipo === "comentarios")).toMatchObject([{ titulo: "@jugador comentó tu foto", texto: "Otra vez yo" }]);
+    expect(await avisos(JUGADOR)).toMatchObject([{ tipo: "comentarios", titulo: "@creador te respondió", texto: "¡Gracias!" }]);
+  });
+
+  it("no llegan avisos de usuarios bloqueados ni de interruptores apagados", async () => {
+    await bloquear(CREADOR, { otroId: JUGADOR, valor: true });
+    await pagarRespuesta(JUGADOR, { postId: "p0" }, T0);
+    expect(await avisos(CREADOR)).toHaveLength(0);
+  });
+
+  it("avisa una sola vez cuando vuelven las vidas", async () => {
+    await db.doc(`private/${JUGADOR}`).update({ vidas: 0, vidasVuelvenEn: Timestamp.fromDate(T0) });
+    expect(await avisarVidasDevueltas(seg(60))).toBe(1);
+    expect(await avisarVidasDevueltas(seg(120))).toBe(0);
+    expect(await avisos(JUGADOR)).toMatchObject([{ tipo: "vidas", titulo: "¡Tus 3 vidas han vuelto!" }]);
   });
 });

@@ -6,6 +6,7 @@ import { auth, db } from "../firebase";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion } from "../sesion";
+import { Campana } from "./Notificaciones";
 import { dificultad, nf } from "../util";
 
 export type Creador = {
@@ -141,7 +142,7 @@ export function Feed() {
       <div className={entrada}>
       <div className="top">
         <p style={{ fontFamily: "var(--f-display)", fontWeight: 800, fontSize: 30, letterSpacing: "-.01em", flex: 1 }}>Blurry</p>
-        <Corazones /> <PildoraMonedas />
+        <Campana /> <Corazones /> <PildoraMonedas />
       </div>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <button onClick={() => ir({ n: "perfil" })} aria-label="Mi perfil" style={{ borderRadius: "50%", flex: "none", marginTop: 1 }}>
