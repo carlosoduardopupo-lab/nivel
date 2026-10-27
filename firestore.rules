@@ -1,0 +1,114 @@
+rules_version = '2';
+
+// Regla general: el cliente casi no escribe nada. Monedas, vidas, ganancias,
+// desbloqueos, progreso, intentos, contadores, preguntas y reportes se
+// escriben SOLO desde Cloud Functions (Admin SDK, que ignora estas reglas).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function registrado() {
+      return request.auth != null;
+    }
+
+    function esYo(uid) {
+      return registrado() && request.auth.uid == uid;
+    }
+
+    function desbloqueo(postId) {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)/desbloqueos/$(postId));
+    }
+
+    // ---------- Perfil público ----------
+    match /users/{uid} {
+      allow read: if registrado();
+      // El dueño solo puede cambiar su avatar y sus intereses.
+      allow update: if esYo(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl', 'intereses'])
+        && (!('intereses' in request.resource.data)
+            || (request.resource.data.intereses is list && request.resource.data.intereses.size() <= 10))
+        && (!('avatarUrl' in request.resource.data)
+            || request.resource.data.avatarUrl == null
+            || request.resource.data.avatarUrl is string);
+      allow create, delete: if false;
+
+      match /desbloqueos/{postId} {
+        allow read: if esYo(uid);
+        allow write: if false;
+      }
+      match /progreso/{creadorId} {
+        allow read: if esYo(uid);
+        allow write: if false;
+      }
+      match /intentos/{postId} {
+        allow read: if esYo(uid);
+        allow write: if false;
+      }
+      match /siguiendo/{creadorId} {
+        allow read: if registrado();
+        allow write: if false;
+      }
+    }
+
+    match /usernames/{nombre} {
+      allow read, write: if false;
+    }
+
+    // ---------- Datos privados ----------
+    match /private/{uid} {
+      allow read: if esYo(uid);
+      allow write: if false;
+
+      match /ganancias/{id} {
+        allow read: if esYo(uid);
+        allow write: if false;
+      }
+    }
+
+    // ---------- Publicaciones ----------
+    match /posts/{postId} {
+      // Get de un doc inexistente devuelve resource == null; se niega.
+      allow read: if registrado() && resource != null && (
+        resource.data.creadorId == request.auth.uid
+        || (resource.data.estado == 'aprobada' && resource.data.get('oculta', false) != true)
+      );
+      allow write: if false;
+
+      match /preguntas/{n} {
+        allow read, write: if false;
+      }
+
+      match /meGusta/{likerUid} {
+        allow read: if registrado();
+        allow write: if false;
+      }
+
+      match /comentarios/{id} {
+        allow read: if registrado() && (
+          desbloqueo(postId)
+          || get(/databases/$(database)/documents/posts/$(postId)).data.creadorId == request.auth.uid
+        );
+        allow write: if false;
+      }
+    }
+
+    // ---------- Dinero y moderación ----------
+    match /reportes/{id} {
+      allow read, write: if false;
+    }
+
+    match /compras/{id} {
+      allow read: if registrado() && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /retiros/{id} {
+      allow read: if registrado() && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+
+    // Todo lo no listado queda cerrado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

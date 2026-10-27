@@ -1,0 +1,44 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function registrado() {
+      return request.auth != null;
+    }
+
+    // Foto o video original: solo el creador o quien la desbloqueó.
+    match /originales/{creadorId}/{postId} {
+      allow read: if registrado() && (
+        request.auth.uid == creadorId
+        || firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)/desbloqueos/$(postId))
+      );
+      // El creador sube una sola vez; no se puede reemplazar ni borrar desde el cliente.
+      allow create: if registrado()
+        && request.auth.uid == creadorId
+        && resource == null
+        && request.resource.size < 50 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*')
+            || request.resource.contentType.matches('video/.*'));
+      allow update, delete: if false;
+    }
+
+    // Versión borrosa: pública para registrados; la genera Cloud Functions.
+    match /borrosas/{archivo} {
+      allow read: if registrado();
+      allow write: if false;
+    }
+
+    match /avatares/{archivo} {
+      allow read: if registrado();
+      allow write: if registrado()
+        && archivo == request.auth.uid + '.jpg'
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /{todo=**} {
+      allow read, write: if false;
+    }
+  }
+}

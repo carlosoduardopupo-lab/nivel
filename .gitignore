@@ -1,0 +1,11 @@
+node_modules/
+dist/
+lib/
+*.log
+.env
+.env.*
+!.env.example
+*.local
+.firebase/
+emulator-data/
+service-account*.json
