@@ -15,6 +15,9 @@ export function borrarReferido() {
   try { localStorage.removeItem(CLAVE_REF); } catch { /* nada */ }
 }
 
+// Correo de soporte (también en /terminos y /privacidad).
+export const CORREO_SOPORTE = "blurrysupport@gmail.com";
+
 // Fase de prueba (functions/src/reglas.ts): sin compras ni retiros; las monedas son para probar.
 export const FASE_PRUEBA = true;
 

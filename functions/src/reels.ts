@@ -11,7 +11,7 @@ import { getStorage } from "firebase-admin/storage";
 import { logger } from "firebase-functions/v2";
 import ffmpegPath from "ffmpeg-static";
 import sharp from "sharp";
-import { db, fallo, texto as textoValido } from "./comun.js";
+import { bloqueadoPor, db, fallo, texto as textoValido } from "./comun.js";
 import { escribirComentario, exigirPerfil } from "./social.js";
 import { APROBACION_AUTOMATICA, MAX_COMENTARIO, MAX_TEXTO_REEL, REEL_MAX_SEGUNDOS } from "./reglas.js";
 
@@ -89,6 +89,7 @@ export async function comentarReel(uid: string, datos: { reelId: string; texto: 
   const ref = db().doc(`reels/${datos.reelId}`);
   const reel = await ref.get();
   if (!reel.exists || reel.get("estado") !== "publicado") fallo("no-existe", "Ese reel no existe.", "not-found");
+  if (await bloqueadoPor(reel.get("autorId"), uid)) fallo("bloqueado", "No puedes comentar aquí.", "permission-denied");
   return escribirComentario(ref, uid, username, t, datos.respondeA);
 }
 

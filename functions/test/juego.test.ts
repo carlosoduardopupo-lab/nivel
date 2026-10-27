@@ -6,7 +6,8 @@ import { HttpsError } from "firebase-functions/v2/https";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { empezarPregunta, pagarRespuesta, responder } from "../src/juego.js";
 import { registrar } from "../src/cuenta.js";
-import { comentar } from "../src/social.js";
+import { comentar, seguir } from "../src/social.js";
+import { bloquear, eliminarCuenta, reportarProblema, reportarReel } from "../src/seguridad.js";
 import { comentarReel, crearReel, editarReel, eliminarReel, meGustaReel } from "../src/reels.js";
 import { aprobarPublicacion } from "../src/moderacion.js";
 import { editarPregunta, eliminarPublicacion, misPreguntas } from "../src/publicaciones.js";
@@ -418,5 +419,78 @@ describe("reels", () => {
     expect((await db.doc("reels/r1").get()).get("comentarios")).toBe(2);
     await db.doc("reels/r2").set({ autorId: CREADOR, estado: "subiendo" });
     expect(await codigo(comentarReel(JUGADOR, { reelId: "r2", texto: "hola" }))).toBe("no-existe");
+  });
+});
+
+describe("bloquear", () => {
+  beforeEach(async () => {
+    await preparar();
+    await db.doc(`users/${JUGADOR}`).update({ seguidores: 0, siguiendo: 0 });
+    await db.doc(`users/${CREADOR}`).update({ seguidores: 0, siguiendo: 0 });
+  });
+
+  it("rompe los seguimientos y el bloqueado ya no puede seguir ni comentar", async () => {
+    await seguir(JUGADOR, { creadorId: CREADOR });
+    await pagarRespuesta(JUGADOR, { postId: "p0" }, T0);
+    await bloquear(CREADOR, { otroId: JUGADOR, valor: true });
+    expect((await db.doc(`users/${JUGADOR}/siguiendo/${CREADOR}`).get()).exists).toBe(false);
+    expect((await db.doc(`users/${CREADOR}`).get()).get("seguidores")).toBe(0);
+    expect(await codigo(seguir(JUGADOR, { creadorId: CREADOR }))).toBe("bloqueado");
+    expect(await codigo(comentar(JUGADOR, { postId: "p0", texto: "hola" }))).toBe("bloqueado");
+    await bloquear(CREADOR, { otroId: JUGADOR, valor: false });
+    await seguir(JUGADOR, { creadorId: CREADOR });
+    expect((await db.doc(`users/${CREADOR}`).get()).get("seguidores")).toBe(1);
+  });
+});
+
+describe("reportes de reels y problemas", () => {
+  beforeEach(() => preparar());
+
+  it("un reel con 3 reportes de personas distintas se oculta", async () => {
+    await db.doc("reels/r1").set({ autorId: CREADOR, estado: "publicado", meGusta: 0 });
+    for (const u of ["a", "b", "c"]) {
+      await db.doc(`users/${u}`).set({ username: u });
+      await reportarReel(u, { reelId: "r1", motivo: "inapropiado" });
+      await reportarReel(u, { reelId: "r1", motivo: "inapropiado" }); // repetido: no cuenta
+    }
+    expect((await db.doc("reels/r1").get()).data()).toMatchObject({ reportes: 3, estado: "oculto" });
+  });
+
+  it("reportar un problema lo guarda para revisarlo", async () => {
+    await reportarProblema(JUGADOR, { texto: "No me carga la foto" });
+    const s = await db.collection("problemas").get();
+    expect(s.docs[0].data()).toMatchObject({ autorId: JUGADOR, username: JUGADOR, texto: "No me carga la foto", estado: "abierto" });
+    expect(await codigo(reportarProblema(JUGADOR, { texto: "x" }))).toBe("dato-invalido");
+  });
+});
+
+describe("eliminarCuenta", () => {
+  beforeEach(async () => {
+    await preparar();
+    await db.doc(`usernames/${CREADOR}`).set({ uid: CREADOR });
+    await db.doc(`users/${JUGADOR}`).update({ seguidores: 0, siguiendo: 0 });
+    await db.doc(`users/${CREADOR}`).update({ seguidores: 0, siguiendo: 0 });
+  });
+
+  it("borra todo lo del creador; la foto que alguien desbloqueó queda en su colección", async () => {
+    await pagarRespuesta(JUGADOR, { postId: "p0" }, T0);
+    const { id: c1 } = await comentar(JUGADOR, { postId: "p0", texto: "¡Genial!" });
+    await comentar(CREADOR, { postId: "p0", texto: "Gracias", respondeA: c1 });
+    await db.doc("reels/r1").set({ autorId: CREADOR, estado: "publicado", meGusta: 0, rutaVideo: null, rutaPortada: null });
+    await seguir(CREADOR, { creadorId: JUGADOR });
+
+    await eliminarCuenta(CREADOR, { borrarAcceso: false });
+
+    expect((await db.doc(`users/${CREADOR}`).get()).exists).toBe(false);
+    expect((await db.doc(`private/${CREADOR}`).get()).exists).toBe(false);
+    expect((await db.doc(`usernames/${CREADOR}`).get()).exists).toBe(false);
+    expect((await db.doc("reels/r1").get()).exists).toBe(false);
+    expect((await db.doc("posts/p1").get()).exists).toBe(false);
+    // p0 la desbloqueó el jugador: se queda, fuera del feed.
+    expect((await db.doc("posts/p0").get()).get("estado")).toBe("eliminada");
+    expect((await db.doc(`users/${JUGADOR}/desbloqueos/p0`).get()).exists).toBe(true);
+    // Su respuesta se borra y el contador baja; el comentario del jugador se queda.
+    expect((await db.doc("posts/p0").get()).get("comentarios")).toBe(1);
+    expect((await db.doc(`users/${JUGADOR}`).get()).get("seguidores")).toBe(0);
   });
 });

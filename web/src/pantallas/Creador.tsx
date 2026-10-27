@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { collection, doc, getDoc, getDocs, orderBy, query, where, type Timestamp } from "firebase/firestore";
 import { api, errorDe, type Pregunta } from "../api";
-import { Barra, Cargando, Corazones, HiloComentarios, HojaCompartir, HojaVidas, ImagenStorage, PantallaCompleta, PildoraMonedas, TituloHoja, Avatar } from "../componentes";
+import { Barra, Cargando, Corazones, HiloComentarios, HojaCompartir, HojaVidas, ImagenStorage, PantallaCompleta, PildoraMonedas, TituloHoja, Avatar, HojaReporte, HojaOpcionesUsuario, HojaBloquear } from "../componentes";
 import { auth, db } from "../firebase";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
@@ -34,7 +34,7 @@ type Intento = {
 const MARGEN = 2000;
 
 export function Creador({ id, postId }: { id: string; postId?: string }) {
-  const { privado } = useSesion();
+  const { bloqueados, privado } = useSesion();
   const { ir, abrirHoja, aviso } = useNav();
   const uid = auth.currentUser!.uid;
   const [creador, setCreador] = useState<{ username: string; avatarUrl: string | null; seguidores: number } | null>(null);
@@ -187,6 +187,17 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
 
   if (!posts || idx === null) return <><Barra titulo="" /><Cargando /></>;
   if (!creador) return <><Barra titulo="" /><p className="sub" style={{ textAlign: "center", padding: 40 }}>Este creador no existe.</p></>;
+  if (bloqueados.has(id)) return (
+    <>
+      <Barra titulo={"@" + creador.username} />
+      <div style={{ textAlign: "center", padding: "50px 20px" }}>
+        <span style={{ fontSize: 34, color: "var(--muted)" }}><Ic n="ban" /></span>
+        <p className="h2" style={{ fontSize: 20, marginTop: 10 }}>Bloqueaste a @{creador.username}</p>
+        <p className="sub">No ves sus fotos, reels ni comentarios.</p>
+        <button className="btn soft" style={{ marginTop: 16 }} onClick={() => abrirHoja(<HojaBloquear uid={id} username={creador.username} />)}>Desbloquear</button>
+      </div>
+    </>
+  );
   if (id === uid) return <><Barra titulo={"@" + creador.username} /><p className="sub" style={{ textAlign: "center", padding: 40 }}>Estas son tus fotos. Míralas en tu perfil.</p></>;
   if (!post) return <><Barra titulo={"@" + creador.username} /><p className="sub" style={{ textAlign: "center", padding: 40 }}>Aún no tiene fotos publicadas.</p></>;
 
@@ -248,6 +259,7 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
         <span style={{ flex: 1, fontSize: 13, color: "var(--muted)" }}>{nf(creador.seguidores)} {creador.seguidores === 1 ? "seguidor" : "seguidores"}</span>
         <button className="iconbtn" aria-label={`Reels de @${creador.username}`} onClick={() => ir({ n: "reels", autorId: id })}><Ic n="film" /></button>
         <button className="iconbtn" aria-label="Compartir" onClick={() => abrirHoja(<HojaCompartir username={creador.username} propio={false} />)}><Ic n="share" /></button>
+        <button className="iconbtn" aria-label={`Opciones de @${creador.username}`} onClick={() => abrirHoja(<HojaOpcionesUsuario uid={id} username={creador.username} />)}><Ic n="dots" /></button>
         <button className={`follow ${sigo ? "on" : ""}`} onClick={alternarSeguir} disabled={sigo === null}>{sigo ? "Siguiendo" : "Seguir"}</button>
       </div>
       <div className="reel">
@@ -265,7 +277,7 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
       </div>
 
       <div className="stage">
-        <button className="dots" aria-label="Reportar esta foto" onClick={() => abrirHoja(<HojaReporte postId={post.id} />)}><Ic n="dots" /></button>
+        <button className="dots" aria-label="Reportar esta foto" onClick={() => abrirHoja(<HojaReporte tipo="foto" id={post.id} />)}><Ic n="dots" /></button>
         {abierta ? (
           <>
             {/* Las fotos desbloqueadas se amplían tocándolas (los videos ya traen su botón de pantalla completa). */}
@@ -350,43 +362,3 @@ function HojaComentarios({ postId }: { postId: string }) {
   );
 }
 
-const MOTIVOS: [string, string][] = [
-  ["inapropiado", "Contenido inapropiado"],
-  ["menor", "Parece una persona menor de edad"],
-  ["robada", "Foto robada o sin permiso"],
-  ["respuesta", "La respuesta es incorrecta"],
-  ["otro", "Otro motivo"],
-];
-
-function HojaReporte({ postId }: { postId: string }) {
-  const { cerrarHoja, aviso } = useNav();
-  const [sel, setSel] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
-  async function enviar() {
-    if (!sel || enviando) return;
-    setEnviando(true);
-    try {
-      await api.reportar({ postId, motivo: sel });
-      cerrarHoja();
-      aviso("Reporte enviado. Gracias.");
-    } catch (e) {
-      aviso(errorDe(e).mensaje);
-      setEnviando(false);
-    }
-  }
-  return (
-    <>
-      <TituloHoja>Reportar esta foto</TituloHoja>
-      <p className="sub" style={{ marginBottom: 10 }}>Tu reporte es anónimo. Revisamos cada caso.</p>
-      <div role="radiogroup">
-        {MOTIVOS.map(([k, t]) => (
-          <button key={k} className="item" role="radio" aria-checked={sel === k} style={{ padding: "12px 4px" }} onClick={() => setSel(k)}>
-            <span className="t"><b>{t}</b></span>
-            <span style={{ width: 22, height: 22, borderRadius: "50%", flex: "none", border: sel === k ? "7px solid var(--rosa)" : "2px solid var(--line)" }} />
-          </button>
-        ))}
-      </div>
-      <button className={`btn ${sel ? "danger" : "off"}`} style={{ marginTop: 12 }} onClick={enviar}>{enviando ? "Enviando…" : "Enviar reporte"}</button>
-    </>
-  );
-}

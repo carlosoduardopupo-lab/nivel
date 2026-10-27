@@ -85,7 +85,7 @@ function useBarraDesplazable() {
 }
 
 export function Feed() {
-  const { perfil } = useSesion();
+  const { perfil, bloqueados } = useSesion();
   const { ir, aviso, abrirHoja } = useNav();
   const [filtro, setFiltro] = useState<Filtro>(filtroGuardado);
   const [creadores, setCreadores] = useState<Creador[] | null>(null);
@@ -110,7 +110,7 @@ export function Feed() {
     cargar(filtro, perfil.intereses ?? [], siguiendo).then(
       (r) => {
         if (!vivo) return;
-        let l = r.filter((c) => c.id !== uid && c.numPublicaciones > 0);
+        let l = r.filter((c) => c.id !== uid && c.numPublicaciones > 0 && !bloqueados.has(c.id));
         // "Siguiendo" solo muestra a quien tiene fotos nuevas por jugar.
         if (filtro === "Siguiendo") l = l.filter((c) => c.numPublicaciones > (progreso[c.id] ?? 0));
         setCreadores(l);
@@ -206,6 +206,7 @@ export function Feed() {
 /** Busca usuarios por el principio de su nombre de usuario (se guardan en minúsculas). */
 function BuscarUsuarios() {
   const { ir, cerrarHoja } = useNav();
+  const { bloqueados } = useSesion();
   const [texto, setTexto] = useState("");
   const [lista, setLista] = useState<{ id: string; username: string; avatarUrl: string | null; numPublicaciones: number }[] | null>(null);
   useEffect(() => {
@@ -226,7 +227,7 @@ function BuscarUsuarios() {
         <input autoFocus placeholder="Buscar por nombre de usuario" aria-label="Buscar por nombre de usuario" autoComplete="off" value={texto} onChange={(e) => setTexto(e.target.value)} />
       </div>
       <div style={{ minHeight: 200, marginTop: 8 }}>
-        {lista === null ? null : lista.length === 0 ? <p className="sub" style={{ textAlign: "center", padding: "24px 0" }}>No hay nadie con ese nombre.</p> : lista.map((u) => (
+        {lista === null ? null : lista.length === 0 ? <p className="sub" style={{ textAlign: "center", padding: "24px 0" }}>No hay nadie con ese nombre.</p> : lista.filter((u) => !bloqueados.has(u.id)).map((u) => (
           <button key={u.id} className="lrow" style={{ width: "100%", textAlign: "left" }} onClick={() => { cerrarHoja(); ir(u.id === auth.currentUser?.uid ? { n: "perfil" } : { n: "creador", id: u.id }); }}>
             <Avatar url={u.avatarUrl} tam={42} />
             <div style={{ flex: 1, minWidth: 0 }}>

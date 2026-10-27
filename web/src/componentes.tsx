@@ -248,8 +248,10 @@ export function HiloComentarios({ postId, coleccion = "posts", alCambiar }: { po
   );
 
   // Principales: el más nuevo arriba. Respuestas: en orden, debajo de su principal.
-  const principales = (lista ?? []).filter((c) => !c.respondeA).reverse();
-  const respuestas = (id: string) => (lista ?? []).filter((c) => c.respondeA === id);
+  const { bloqueados } = useSesion();
+  const visibles = (lista ?? []).filter((c) => !bloqueados.has(c.autorId));
+  const principales = visibles.filter((c) => !c.respondeA).reverse();
+  const respuestas = (id: string) => visibles.filter((c) => c.respondeA === id);
   return (
     <>
       <div>
@@ -420,5 +422,101 @@ export function AvisoFasePrueba({ oscuro = false }: { oscuro?: boolean }) {
         funcionar el sistema de pagos. <b>Los seguidores sí son reales</b> y cada uno impulsa el crecimiento de tu perfil.
       </p>
     </div>
+  );
+}
+
+const MOTIVOS_REPORTE: [string, string, "foto" | "reel" | "ambos"][] = [
+  ["inapropiado", "Contenido inapropiado", "ambos"],
+  ["menor", "Parece una persona menor de edad", "ambos"],
+  ["robada", "Robado o sin permiso", "ambos"],
+  ["respuesta", "La respuesta es incorrecta", "foto"],
+  ["otro", "Otro motivo", "ambos"],
+];
+
+/** Reportar una foto o un reel. Con 3 reportes se oculta hasta revisarlo. */
+export function HojaReporte({ tipo, id }: { tipo: "foto" | "reel"; id: string }) {
+  const { cerrarHoja, aviso } = useNav();
+  const [sel, setSel] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  async function enviar() {
+    if (!sel || enviando) return;
+    setEnviando(true);
+    try {
+      if (tipo === "reel") await api.reportarReel({ reelId: id, motivo: sel });
+      else await api.reportar({ postId: id, motivo: sel });
+      cerrarHoja();
+      aviso("Reporte enviado. Gracias.");
+    } catch (e) {
+      aviso(errorDe(e).mensaje);
+      setEnviando(false);
+    }
+  }
+  return (
+    <>
+      <TituloHoja>{tipo === "reel" ? "Reportar este reel" : "Reportar esta foto"}</TituloHoja>
+      <p className="sub" style={{ marginBottom: 10 }}>Tu reporte es anónimo. Revisamos cada caso.</p>
+      <div role="radiogroup">
+        {MOTIVOS_REPORTE.filter(([, , t]) => t === "ambos" || t === tipo).map(([k, t]) => (
+          <button key={k} className="item" role="radio" aria-checked={sel === k} style={{ padding: "12px 4px" }} onClick={() => setSel(k)}>
+            <span className="t"><b>{t}</b></span>
+            <span style={{ width: 22, height: 22, borderRadius: "50%", flex: "none", border: sel === k ? "7px solid var(--rosa)" : "2px solid var(--line)" }} />
+          </button>
+        ))}
+      </div>
+      <button className={`btn ${sel ? "danger" : "off"}`} style={{ marginTop: 12 }} onClick={enviar}>{enviando ? "Enviando…" : "Enviar reporte"}</button>
+    </>
+  );
+}
+
+/** Bloquear o desbloquear a un usuario. Al bloquear, se deja de ver su contenido y se rompen los seguimientos. */
+export function HojaBloquear({ uid, username, alCambiar }: { uid: string; username: string; alCambiar?: (bloqueado: boolean) => void }) {
+  const { bloqueados } = useSesion();
+  const { cerrarHoja, aviso } = useNav();
+  const [ocupado, setOcupado] = useState(false);
+  const bloqueado = bloqueados.has(uid);
+  async function cambiar() {
+    setOcupado(true);
+    try {
+      await api.bloquear({ otroId: uid, valor: !bloqueado });
+      alCambiar?.(!bloqueado);
+      cerrarHoja();
+      aviso(bloqueado ? `Desbloqueaste a @${username}` : `Bloqueaste a @${username}`);
+    } catch (e) {
+      aviso(errorDe(e).mensaje);
+      setOcupado(false);
+    }
+  }
+  return (
+    <>
+      <TituloHoja>{bloqueado ? `¿Desbloquear a @${username}?` : `¿Bloquear a @${username}?`}</TituloHoja>
+      <p className="sub" style={{ lineHeight: 1.5 }}>
+        {bloqueado
+          ? "Volverás a ver sus fotos, reels y comentarios. Podrá seguirte y comentar otra vez."
+          : "No verás sus fotos, reels ni comentarios. Dejaréis de seguiros y no podrá seguirte ni comentar en tus fotos o reels. No se le avisa."}
+      </p>
+      <button className={`btn ${bloqueado ? "dark" : "danger"}`} style={{ marginTop: 16 }} disabled={ocupado} onClick={cambiar}>
+        {ocupado ? "Un momento…" : bloqueado ? "Desbloquear" : "Bloquear"}
+      </button>
+      <button className="btn soft" style={{ marginTop: 8 }} onClick={cerrarHoja}>Cancelar</button>
+    </>
+  );
+}
+
+/** Menú de opciones sobre otro usuario o su contenido: reportar y bloquear. */
+export function HojaOpcionesUsuario({ uid, username, reporte }: { uid: string; username: string; reporte?: { tipo: "foto" | "reel"; id: string } }) {
+  const { abrirHoja } = useNav();
+  const { bloqueados } = useSesion();
+  return (
+    <>
+      <TituloHoja>@{username}</TituloHoja>
+      {reporte && (
+        <button className="item" style={{ padding: "12px 4px" }} onClick={() => abrirHoja(<HojaReporte tipo={reporte.tipo} id={reporte.id} />)}>
+          <span style={{ color: "var(--rojo)" }}><Ic n="flag" /></span><span className="t"><b>{reporte.tipo === "reel" ? "Reportar este reel" : "Reportar esta foto"}</b></span>
+        </button>
+      )}
+      <button className="item" style={{ padding: "12px 4px" }} onClick={() => abrirHoja(<HojaBloquear uid={uid} username={username} />)}>
+        <span style={{ color: "var(--rojo)" }}><Ic n="ban" /></span><span className="t"><b>{bloqueados.has(uid) ? `Desbloquear a @${username}` : `Bloquear a @${username}`}</b></span>
+      </button>
+    </>
   );
 }

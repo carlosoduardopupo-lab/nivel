@@ -50,6 +50,12 @@ Estas reglas mandan sobre todo el proyecto. Si el código y este archivo no coin
 - Sale todo creador popular salvo que desactive "Aparecer en la web de Blurry" en Ajustes (`ajustes.escaparate`, activado por defecto).
 - Solo se publica esa primera foto (reducida); nunca las demás fotos de su fila, preguntas ni respuestas. Lo sirve la función `escaparatePublico` en `/api/escaparate`.
 
+## Seguridad y cuenta
+- **Bloquear**: desde el perfil de alguien (⋯) o un reel. Quien bloquea deja de ver sus fotos, reels, comentarios y en la búsqueda; se rompen los seguimientos en los dos sentidos y el bloqueado no puede seguirle ni comentar en sus fotos o reels. No se avisa. Se deshace en Ajustes → Cuentas bloqueadas.
+- **Reportar reels**: como las fotos (inapropiado, menor, robado, otro); con 3 reportes de personas distintas el reel se oculta hasta revisarlo (`npm run moderar -- reels`).
+- **Reportar un problema y Centro de ayuda** (Ajustes → Ayuda). Los problemas se guardan en `problemas` (`npm run moderar -- problemas`). Correo de soporte: blurrysupport@gmail.com.
+- **Eliminar cuenta** (Ajustes, escribiendo ELIMINAR): se borran perfil, datos privados, monedas, colección, reels, comentarios, seguimientos, avatar, publicaciones y el acceso. Las fotos que otros ya desbloquearon quedan "eliminadas" en su colección.
+
 ## Estadísticas
 - % de me gusta del creador = total de me gusta ÷ total de desbloqueos de sus fotos. No se muestra hasta tener un mínimo de 20 desbloqueos ("Nuevo").
 - Dificultad del creador = % de intentos fallidos.

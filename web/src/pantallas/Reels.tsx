@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, where, type QueryConstraint } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { api, errorDe } from "../api";
-import { Avatar, Barra, BotonesFlotantes, claseEntrada, HiloComentarios, HojaCompartir, PildoraMonedas, TituloHoja } from "../componentes";
+import { Avatar, Barra, BotonesFlotantes, claseEntrada, HiloComentarios, HojaCompartir, PildoraMonedas, TituloHoja, HojaOpcionesUsuario } from "../componentes";
 import { auth, db, storage } from "../firebase";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
+import { useSesion } from "../sesion";
 import { duracionVideo, nf } from "../util";
 
 export type Reel = { id: string; autorId: string; texto: string; estado: string; rutaVideo: string | null; rutaPortada: string | null; meGusta: number; comentarios?: number };
@@ -55,6 +56,7 @@ export function Reels({ autorId, reelId }: { autorId?: string; reelId?: string }
     if (i > 0) caja.current?.scrollTo({ top: i * caja.current.clientHeight });
   }, [lista, reelId]);
 
+  const { bloqueados } = useSesion();
   const quitar = (id: string) => setLista((l) => l && l.filter((r) => r.id !== id));
   const cambiar = (r: Reel) => setLista((l) => l && l.map((x) => (x.id === r.id ? r : x)));
 
@@ -74,7 +76,7 @@ export function Reels({ autorId, reelId }: { autorId?: string; reelId?: string }
             <p className="h2" style={{ color: "#fff", marginTop: 12 }}>{autorId ? "Aún no hay reels aquí" : "Aún no hay reels"}</p>
             <p style={{ opacity: 0.75, fontSize: 14, marginTop: 6 }}>Sube un video gratis y cuenta qué hay detrás de tus fotos borrosas. Toca + para crear el primero.</p>
           </div>
-        ) : lista.map((r) => (
+        ) : lista.filter((r) => !bloqueados.has(r.autorId)).map((r) => (
           <TarjetaReel key={r.id} reel={r} sonido={sonido} alSonido={() => setSonido((s) => !s)} alEliminar={() => quitar(r.id)} alEditar={cambiar} />
         ))}
       </div>
@@ -177,6 +179,7 @@ function TarjetaReel({ reel, sonido, alSonido, alEliminar, alEditar }: {
           </>,
         )}><Ic n="msg" /><small>{nf(comentarios)}</small></button>
         {autor && <button onClick={() => abrirHoja(<HojaCompartir username={autor.username} propio={mio} />)} aria-label="Compartir"><Ic n="share" /><small>Compartir</small></button>}
+        {!mio && autor && <button onClick={() => abrirHoja(<HojaOpcionesUsuario uid={reel.autorId} username={autor.username} reporte={{ tipo: "reel", id: reel.id }} />)} aria-label="Más opciones"><Ic n="dots" /><small>Más</small></button>}
         {mio && <button onClick={() => abrirHoja(<HojaEditarReel reel={reel} alEditar={alEditar} alEliminar={alEliminar} />)} aria-label="Editar reel"><Ic n="dots" /><small>Editar</small></button>}
       </div>
 

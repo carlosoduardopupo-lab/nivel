@@ -8,6 +8,7 @@ import * as escaparate from "./escaparate.js";
 import * as juego from "./juego.js";
 import * as publicaciones from "./publicaciones.js";
 import * as reels from "./reels.js";
+import * as seguridad from "./seguridad.js";
 import * as social from "./social.js";
 
 initializeApp();
@@ -97,3 +98,15 @@ export const escaparatePublico = onRequest({ invoker: "public", maxInstances: 5 
   const tarjetas = await escaparate.populares();
   res.set("Cache-Control", "public, max-age=300, s-maxage=600").json({ tarjetas });
 });
+
+// Seguridad y cuenta
+export const bloquear = onCall((req) => {
+  const d = datos(req);
+  return seguridad.bloquear(uidDe(req), { otroId: id(d.otroId, "el usuario"), valor: d.valor !== false });
+});
+export const reportarReel = onCall((req) => {
+  const d = datos(req);
+  return seguridad.reportarReel(uidDe(req), { reelId: id(d.reelId), motivo: d.motivo, detalle: d.detalle });
+});
+export const reportarProblema = onCall((req) => seguridad.reportarProblema(uidDe(req), { texto: datos(req).texto }));
+export const eliminarCuenta = onCall({ timeoutSeconds: 300 }, (req) => seguridad.eliminarCuenta(uidDe(req)));

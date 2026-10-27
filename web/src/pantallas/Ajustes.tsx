@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { sendPasswordResetEmail, signOut } from "firebase/auth";
-import { collection, doc, getDocs, orderBy, query, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDocs, orderBy, query, updateDoc, where, getDoc } from "firebase/firestore";
 import { api, errorDe } from "../api";
-import { Barra, HojaReglasReferidos, TituloHoja } from "../componentes";
+import { Barra, HojaReglasReferidos, TituloHoja, Avatar, HojaBloquear } from "../componentes";
 import { auth, db } from "../firebase";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion } from "../sesion";
-import { INTERESES, nf } from "../util";
+import { INTERESES, nf, CORREO_SOPORTE } from "../util";
 
 type Fila = { i: string; t: string; s?: string; sw?: string; accion?: () => void };
 
 export function Ajustes() {
-  const { perfil, privado, usuario } = useSesion();
+  const { perfil, privado, usuario, bloqueados } = useSesion();
   const { ir, abrirHoja, cerrarHoja, aviso } = useNav();
   // escaparate: activado salvo que el creador lo haya desactivado (las cuentas antiguas no lo tienen).
   const [sw, setSw] = useState<Record<string, boolean>>({ escaparate: true, ...privado?.ajustes });
@@ -48,7 +48,7 @@ export function Ajustes() {
       { i: "msg", t: "Permitir comentarios", s: "Solo quien desbloqueó la foto", sw: "comentar" },
       { i: "spark", t: "Aparecer en \"Para ti\"", s: "Te sugerimos a otros jugadores", sw: "sugeridos" },
       { i: "eye", t: "Aparecer en la web de Blurry", s: "Si estás entre los populares, tu tarjeta (foto de perfil) sale en la página de descarga", sw: "escaparate" },
-      { i: "ban", t: "Cuentas bloqueadas", s: "Ninguna", accion: pronto("Cuentas bloqueadas") },
+      { i: "ban", t: "Cuentas bloqueadas", s: bloqueados.size ? `${bloqueados.size}` : "Ninguna", accion: () => abrirHoja(<HojaBloqueados />) },
     ]],
     ["Pagos", [
       { i: "bank", t: "Cuenta bancaria", s: "Sin conectar", accion: () => ir({ n: "retiro" }) },
@@ -56,8 +56,8 @@ export function Ajustes() {
       { i: "file", t: "Documentos de impuestos", s: "Formulario W-9 y 1099", accion: pronto("Documentos de impuestos") },
     ]],
     ["Ayuda", [
-      { i: "help", t: "Centro de ayuda", accion: pronto("Centro de ayuda") },
-      { i: "flag", t: "Reportar un problema", accion: pronto("Reportar un problema") },
+      { i: "help", t: "Centro de ayuda", accion: () => abrirHoja(<HojaAyuda />) },
+      { i: "flag", t: "Reportar un problema", accion: () => abrirHoja(<HojaProblema />) },
       { i: "book", t: "Reglas del juego", accion: () => abrirHoja(<HojaReglas />) },
       { i: "share", t: "Reglas de referidos", accion: () => abrirHoja(<HojaReglasReferidos />) },
       { i: "file", t: "Términos de uso", accion: () => window.open("/terminos/", "_blank", "noopener") },
@@ -97,7 +97,7 @@ export function Ajustes() {
             <button className="btn" style={{ marginTop: 6, color: "var(--muted)" }} onClick={cerrarHoja}>Cancelar</button>
           </>,
         )}><Ic n="out" /> Cerrar sesión</button>
-        <button style={{ textAlign: "center", fontWeight: 700, fontSize: 13, color: "var(--rojo)", padding: 12 }} onClick={pronto("Eliminar cuenta")}>Eliminar cuenta</button>
+        <button style={{ textAlign: "center", fontWeight: 700, fontSize: 13, color: "var(--rojo)", padding: 12 }} onClick={() => abrirHoja(<HojaEliminarCuenta />)}>Eliminar cuenta</button>
       </div>
       <p style={{ textAlign: "center", fontSize: 11, color: "var(--muted)" }}>Blurry · versión 0.3</p>
     </>
@@ -171,6 +171,121 @@ export function HojaReglas() {
       {REGLAS.map(([t, d]) => (
         <div key={t} style={{ padding: "9px 0" }}><b style={{ fontSize: 14 }}>{t}</b><p style={{ fontSize: 13, color: "var(--muted)", marginTop: 2, lineHeight: 1.45 }}>{d}</p></div>
       ))}
+    </>
+  );
+}
+
+function HojaBloqueados() {
+  const { bloqueados } = useSesion();
+  const { abrirHoja } = useNav();
+  const [lista, setLista] = useState<{ id: string; username: string; avatarUrl: string | null }[] | null>(null);
+  useEffect(() => {
+    Promise.all([...bloqueados].map((id) => getDoc(doc(db, "users", id)).then((u) => ({ id, username: u.get("username") ?? "usuario", avatarUrl: u.get("avatarUrl") ?? null }))))
+      .then(setLista, () => setLista([]));
+  }, [bloqueados]);
+  return (
+    <>
+      <TituloHoja>Cuentas bloqueadas</TituloHoja>
+      {lista === null ? <p className="sub">Cargando…</p> : !lista.length ? <p className="sub" style={{ padding: "14px 0" }}>No has bloqueado a nadie.</p> : lista.map((u) => (
+        <div className="lrow" key={u.id}>
+          <Avatar url={u.avatarUrl} tam={40} />
+          <p style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>@{u.username}</p>
+          <button className="follow on" onClick={() => abrirHoja(<HojaBloquear uid={u.id} username={u.username} />)}>Desbloquear</button>
+        </div>
+      ))}
+    </>
+  );
+}
+
+const PREGUNTAS_AYUDA: [string, string][] = [
+  ["¿Cómo veo una foto borrosa?", "Toca la foto que toca jugar: aparece una pregunta sobre el creador con tres respuestas. Si aciertas antes de que acabe el tiempo, la foto es tuya. También puedes verla pagando con monedas."],
+  ["Me quedé sin vidas", "Toca los corazones de arriba: puedes esperar a que vuelvan, invitar a un amigo (cuando juegue su primera foto, recuperas tus 3 vidas) o seguir con monedas."],
+  ["¿Las monedas son dinero?", "No. Estamos en fase de prueba: las monedas sirven para probar el sistema y no se pueden comprar ni retirar todavía. Te avisaremos cuando empiecen los pagos."],
+  ["¿Cómo publico?", "Toca + en el juego para subir una foto o video con tu pregunta, o + en Reels para subir un video gratis que invite a jugar."],
+  ["Alguien me molesta", "Abre su perfil o su reel, toca ⋯ y elige Bloquear. Dejarás de ver su contenido y no podrá seguirte ni comentarte."],
+  ["Vi algo que no debería estar", "Toca ⋯ en la foto o el reel y elige Reportar. Con 3 reportes se oculta hasta que lo revisemos."],
+  ["Quiero eliminar mi cuenta", "Ajustes → Eliminar cuenta. Se borran tu perfil, tus datos y tus publicaciones (las fotos que otros ya desbloquearon siguen en su colección)."],
+];
+
+function HojaAyuda() {
+  const { abrirHoja } = useNav();
+  const [abierta, setAbierta] = useState<number | null>(null);
+  return (
+    <>
+      <TituloHoja>Centro de ayuda</TituloHoja>
+      {PREGUNTAS_AYUDA.map(([p, r], i) => (
+        <div key={p} style={{ borderBottom: "1px solid var(--line)" }}>
+          <button style={{ display: "flex", width: "100%", alignItems: "center", gap: 10, padding: "12px 2px", textAlign: "left", fontWeight: 700, fontSize: 14 }} onClick={() => setAbierta(abierta === i ? null : i)} aria-expanded={abierta === i}>
+            <span style={{ flex: 1 }}>{p}</span><span style={{ color: "var(--muted)", transform: abierta === i ? "rotate(90deg)" : "none", transition: "transform .2s" }}><Ic n="next" /></span>
+          </button>
+          {abierta === i && <p style={{ fontSize: 13.5, color: "var(--muted)", lineHeight: 1.5, padding: "0 2px 12px" }}>{r}</p>}
+        </div>
+      ))}
+      <p className="sub" style={{ marginTop: 16 }}>¿No encuentras lo que buscas?</p>
+      <button className="btn soft" style={{ marginTop: 8 }} onClick={() => abrirHoja(<HojaProblema />)}><Ic n="flag" /> Reportar un problema</button>
+      <a className="btn soft" style={{ marginTop: 8, textDecoration: "none" }} href={`mailto:${CORREO_SOPORTE}`}><Ic n="mail" /> {CORREO_SOPORTE}</a>
+    </>
+  );
+}
+
+function HojaProblema() {
+  const { cerrarHoja, aviso } = useNav();
+  const [texto, setTexto] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const ok = texto.trim().length >= 5;
+  async function enviar() {
+    if (!ok || enviando) return;
+    setEnviando(true);
+    try {
+      await api.reportarProblema({ texto: texto.trim() });
+      cerrarHoja();
+      aviso("Gracias. Lo revisaremos pronto.");
+    } catch (e) {
+      aviso(errorDe(e).mensaje);
+      setEnviando(false);
+    }
+  }
+  return (
+    <>
+      <TituloHoja>Reportar un problema</TituloHoja>
+      <p className="sub" style={{ marginBottom: 10 }}>Cuéntanos qué pasó. Si es sobre una foto, un reel o un usuario, usa mejor su botón ⋯ para reportarlo.</p>
+      <textarea className="field" maxLength={1000} placeholder="Ej: al publicar un video se queda en 'Procesando'…" aria-label="Describe el problema" value={texto} onChange={(e) => setTexto(e.target.value)} style={{ minHeight: 120 }} />
+      <p style={{ textAlign: "right", fontSize: 11, color: "var(--muted)", marginTop: 4 }}>{texto.length}/1000</p>
+      <button className={`btn ${ok && !enviando ? "grad" : "off"}`} style={{ marginTop: 10 }} onClick={enviar}>{enviando ? "Enviando…" : "Enviar"}</button>
+      <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 12, textAlign: "center" }}>También puedes escribirnos a <a href={`mailto:${CORREO_SOPORTE}`}>{CORREO_SOPORTE}</a></p>
+    </>
+  );
+}
+
+function HojaEliminarCuenta() {
+  const { perfil } = useSesion();
+  const { cerrarHoja, aviso } = useNav();
+  const [texto, setTexto] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const ok = texto.trim().toUpperCase() === "ELIMINAR";
+  async function eliminar() {
+    if (!ok || ocupado) return;
+    setOcupado(true);
+    try {
+      await api.eliminarCuenta({});
+      cerrarHoja();
+      await signOut(auth).catch(() => {});
+    } catch (e) {
+      aviso(errorDe(e).mensaje);
+      setOcupado(false);
+    }
+  }
+  return (
+    <>
+      <TituloHoja>Eliminar tu cuenta</TituloHoja>
+      <p className="sub" style={{ lineHeight: 1.5 }}>
+        Se borrarán para siempre tu perfil @{perfil?.username}, tus datos privados, tus monedas, tu colección, tus reels, tus comentarios y tus publicaciones.
+        Las fotos que otras personas ya desbloquearon seguirán en su colección, pero saldrán del feed.
+      </p>
+      <p className="lbl">Escribe ELIMINAR para confirmar</p>
+      <div className="field"><input value={texto} onChange={(e) => setTexto(e.target.value)} autoComplete="off" aria-label="Escribe ELIMINAR para confirmar" placeholder="ELIMINAR" /></div>
+      <button className={`btn ${ok && !ocupado ? "danger" : "off"}`} style={{ marginTop: 14 }} onClick={eliminar}>{ocupado ? "Eliminando…" : "Eliminar mi cuenta"}</button>
+      <button className="btn soft" style={{ marginTop: 8 }} onClick={cerrarHoja}>Cancelar</button>
     </>
   );
 }

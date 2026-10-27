@@ -1,5 +1,5 @@
 import { FieldValue, Timestamp, type DocumentReference } from "firebase-admin/firestore";
-import { db, fallo, texto } from "./comun.js";
+import { bloqueadoPor, db, fallo, texto } from "./comun.js";
 import { MAX_COMENTARIO, MOTIVOS_REPORTE, REPORTES_PARA_OCULTAR } from "./reglas.js";
 
 export async function exigirPerfil(uid: string): Promise<string> {
@@ -16,6 +16,7 @@ export async function seguir(uid: string, datos: { creadorId: string }): Promise
     const [yo, creador, ya] = await Promise.all([tx.get(db().doc(`users/${uid}`)), tx.get(db().doc(`users/${creadorId}`)), tx.get(ref)]);
     if (!yo.exists) fallo("sin-perfil", "Termina tu registro primero.");
     if (!creador.exists) fallo("no-existe", "Ese usuario no existe.", "not-found");
+    if (await bloqueadoPor(creadorId, uid, tx)) fallo("bloqueado", "No puedes seguir a este usuario.", "permission-denied");
     if (ya.exists) return;
     tx.set(ref, { creadoEn: Timestamp.now() });
     tx.update(creador.ref, { seguidores: FieldValue.increment(1) });
@@ -68,6 +69,7 @@ export async function comentar(uid: string, datos: { postId: string; texto: unkn
   const post = await refPost.get();
   if (!post.exists) fallo("no-existe", "Esa foto no existe.", "not-found");
   const creadorId = post.get("creadorId") as string;
+  if (await bloqueadoPor(creadorId, uid)) fallo("bloqueado", "No puedes comentar aquí.", "permission-denied");
   if (creadorId !== uid) {
     const desb = await db().doc(`users/${uid}/desbloqueos/${postId}`).get();
     if (!desb.exists) fallo("no-desbloqueada", "Desbloquea la foto para comentar.");

@@ -255,7 +255,7 @@ function EditarPregunta({ postId, actual, alTerminar }: {
   );
 }
 
-const ESTADO_REEL: Record<string, string> = { subiendo: "Procesando…", revision: "En revisión", rechazado: "Rechazado" };
+const ESTADO_REEL: Record<string, string> = { subiendo: "Procesando…", revision: "En revisión", rechazado: "Rechazado", oculto: "Oculto por reportes" };
 
 /** Mis reels: se abren en el visor de reels; los que fallaron se pueden borrar. */
 function MisReels({ uid }: { uid: string }) {
