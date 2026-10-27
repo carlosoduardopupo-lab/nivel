@@ -1,6 +1,6 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { db, fallo, texto } from "./comun.js";
-import { EDAD_MINIMA, INTERESES, MAX_INTERESES, USERNAME_RE, VIDAS_POR_DIA, edadDe } from "./reglas.js";
+import { EDAD_MINIMA, INTERESES, MAX_INTERESES, MONEDAS_BIENVENIDA, USERNAME_RE, VIDAS_POR_DIA, edadDe } from "./reglas.js";
 
 export const AJUSTES_POR_DEFECTO = {
   nuevas: true,
@@ -86,7 +86,8 @@ export async function registrar(uid: string, correo: string | null, datos: Datos
       nombreReal,
       fechaNacimiento: fecha,
       correo,
-      monedas: 0,
+      monedas: MONEDAS_BIENVENIDA,
+      monedasRegalo: MONEDAS_BIENVENIDA,
       vidas: VIDAS_POR_DIA,
       vidasVuelvenEn: null,
       vidasDia: null,

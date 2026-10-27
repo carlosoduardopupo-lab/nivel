@@ -153,11 +153,12 @@ function HojaCompras() {
 const REGLAS: [string, string][] = [
   ["Cada foto es un nivel", "Se juega en orden. Aciertas la trivia y la foto queda en tu colección para siempre."],
   ["3 vidas al día", "Cada fallo gasta una. Sin vidas, esperas 24 horas o sigues pagando con monedas."],
-  ["3 preguntas por foto", "Si fallas, al día siguiente te toca otra pregunta. Nunca se repiten. Después de 3 fallos, solo pagando."],
+  ["Si fallas", "Un intento por foto al día. Al día siguiente te toca otra pregunta distinta: de otra foto del mismo creador o una general. Nunca se repiten."],
   ["Tiempo según el precio", "10 segundos con 1 moneda y 5 más por cada moneda extra, hasta 30."],
   ["Ver respuesta", "El botón con el precio siempre está disponible: pagas y la foto es tuya."],
   ["Precios", "De 1 a 20 monedas por foto (videos desde 3). Los creadores VIP pueden cobrar hasta 100."],
-  ["Creadores", "Reciben $0.005 por cada moneda gastada en sus publicaciones. Retiro mínimo de $50."],
+  ["Monedas de regalo", "Al registrarte recibes 100 monedas para ver fotos."],
+  ["Creadores", "Reciben $0.005 por cada moneda comprada que se gasta en sus publicaciones (las de regalo no cuentan). Retiro mínimo de $50."],
 ];
 
 export function HojaReglas() {

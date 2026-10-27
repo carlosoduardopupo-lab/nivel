@@ -48,7 +48,8 @@ export function Perfil() {
       </div>
       <div className="wallet" style={{ marginTop: 16 }}>
         <div style={{ display: "flex", gap: 14 }}>
-          <div style={{ flex: 1 }}><small>MONEDAS</small><div className="num"><span style={{ color: "var(--oro)" }}><Ic n="coin" /></span>{nf(privado.monedas)}</div></div>
+          <div style={{ flex: 1 }}><small>MONEDAS</small><div className="num"><span style={{ color: "var(--oro)" }}><Ic n="coin" /></span>{nf(privado.monedas)}</div>
+            {(privado.monedasRegalo ?? 0) > 0 && <p style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>{nf(privado.monedasRegalo ?? 0)} de regalo</p>}</div>
           <div style={{ flex: 1 }}><small>GANANCIAS</small><div className="num" style={{ color: "#6FD6AE" }}>{dinero(privado.gananciasDisponibles)}</div>
             {privado.gananciasEnEspera > 0 && <p style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>+{dinero(privado.gananciasEnEspera)} en espera</p>}</div>
         </div>
@@ -96,8 +97,8 @@ function MisPublicaciones({ uid }: { uid: string }) {
 }
 
 function DetallePost({ post }: { post: MiPost }) {
-  const [preguntas, setPreguntas] = useState<{ texto: string; respuesta: string; autor: string }[] | null>(null);
-  useEffect(() => { api.misPreguntas({ postId: post.id }).then((r) => setPreguntas(r.preguntas), () => setPreguntas([])); }, [post.id]);
+  const [pregunta, setPregunta] = useState<{ texto: string; respuesta: string; falsas: string[] } | null | false>(null);
+  useEffect(() => { api.miPregunta({ postId: post.id }).then(setPregunta, () => setPregunta(false)); }, [post.id]);
   const aciertan = post.intentos ? Math.round(((post.intentos - post.fallos) / post.intentos) * 100) : 0;
   const ganado = (post.monedasGastadas ?? 0) * 5;
   return (
@@ -116,13 +117,14 @@ function DetallePost({ post }: { post: MiPost }) {
         <div style={{ background: "var(--surface2)", borderRadius: 12, padding: 12 }}><p className="lbl" style={{ margin: 0 }}>Aciertan</p><p style={{ fontFamily: "var(--f-display)", fontSize: 22, fontWeight: 700, marginTop: 4 }}>{post.intentos ? `${aciertan}%` : "—"}</p></div>
         <div style={{ background: "var(--surface2)", borderRadius: 12, padding: 12 }}><p className="lbl" style={{ margin: 0 }}>Ganado</p><p style={{ fontFamily: "var(--f-display)", fontSize: 22, fontWeight: 700, marginTop: 4, color: "var(--verde)" }}>{dinero(ganado)}</p></div>
       </div>
-      <p className="lbl">Tus 3 preguntas</p>
-      {preguntas === null ? <p className="sub">Cargando…</p> : preguntas.map((q, k) => (
-        <div key={k} style={{ display: "flex", gap: 10, alignItems: "center", padding: "7px 0" }}>
-          <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--surface2)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{k + 1}</span>
-          <span style={{ fontSize: 14 }}>{q.texto} <span style={{ color: "var(--verde)", fontSize: 12 }}>→ {q.respuesta}</span>{q.autor === "ia" && <span style={{ color: "var(--rosa)", fontSize: 11, fontWeight: 700 }}> IA</span>}</span>
+      <p className="lbl">Tu pregunta</p>
+      {pregunta === null ? <p className="sub">Cargando…</p> : pregunta ? (
+        <div style={{ padding: "4px 0" }}>
+          <p style={{ fontSize: 15, fontWeight: 600 }}>{pregunta.texto}</p>
+          <p style={{ fontSize: 13, color: "var(--verde)", marginTop: 6 }}><Ic n="check" /> {pregunta.respuesta}</p>
+          {pregunta.falsas.map((f) => <p key={f} style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}><Ic n="x" /> {f}</p>)}
         </div>
-      ))}
+      ) : <p className="sub">No se pudo cargar.</p>}
     </>
   );
 }

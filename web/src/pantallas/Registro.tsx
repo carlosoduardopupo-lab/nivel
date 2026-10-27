@@ -254,7 +254,7 @@ export function Registro({ alTerminar }: { alTerminar: (cuentaNueva: boolean) =>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", paddingTop: 60 }}>
             <div style={{ padding: 3, borderRadius: "50%", background: "var(--grad)" }}><Avatar url={fotoUrl} tam={96} borde="3px solid var(--bg)" /></div>
             <p className="h2" style={{ marginTop: 16 }}>¡Listo, @{d.user.trim().toLowerCase()}!</p>
-            <p className="sub">Tienes 3 vidas para empezar.</p>
+            <p className="sub">Tienes 3 vidas y <b>100 monedas de regalo</b> para empezar.</p>
             <span className="hearts" style={{ fontSize: 26, gap: 6, marginTop: 10 }}>{[0, 1, 2].map((i) => <Ic key={i} n="heart" lleno />)}</span>
           </div>
         )}

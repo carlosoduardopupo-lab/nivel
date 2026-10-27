@@ -42,7 +42,8 @@ Lectura: solo el dueño. Escritura: solo Functions.
 | nombreReal | string |
 | fechaNacimiento | string `AAAA-MM-DD` |
 | correo | string |
-| monedas | number |
+| monedas | number — total (compradas + regalo) |
+| monedasRegalo | number — parte de `monedas` que es de regalo (empieza en 100) |
 | vidas | number (0–3) |
 | vidasVuelvenEn | Timestamp \| null |
 | vidasDia | string \| null — día del juego en que gastó su última vida |
@@ -67,7 +68,8 @@ Lectura: usuarios registrados si `estado == "aprobada"` y no `oculta`; el creado
 | tiempo | number | segundos = min(30, 10 + 5·(precio−1)) |
 | estado | "subiendo" \| "revision" \| "aprobada" \| "rechazada" | "subiendo" hasta que llega el archivo |
 | motivoRechazo | string | si se rechazó |
-| monedasGastadas | number | monedas pagadas por ver la respuesta |
+| monedasGastadas | number | monedas compradas gastadas en ver la respuesta (las que le pagan al creador) |
+| monedasRegalo | number | monedas de regalo gastadas en esta foto (no se pagan) |
 | oculta | boolean | true con 3+ reportes, hasta revisión |
 | rutaOriginal | string | `originales/{creadorId}/{postId}` |
 | rutaBorrosa | string \| null | `borrosas/{postId}.jpg` |
@@ -79,10 +81,13 @@ Lectura: usuarios registrados si `estado == "aprobada"` y no `oculta`; el creado
 | comentarios | number | |
 | creadoEn | Timestamp | |
 
-### posts/{postId}/preguntas/{n} (n = 0, 1, 2)
+### posts/{postId}/preguntas/0
 **Nadie** la lee desde el cliente. Solo Functions.
-`{ texto, opciones: string[3], correcta: number (0–2), autor: "creador" | "ia" }`.
-La pregunta 0 es siempre la del creador.
+`{ texto, opciones: string[3], correcta: number (0–2), autor: "creador" }`. Una sola pregunta por foto.
+
+### bancoPreguntas/{id}
+Preguntas generales de Nivel para cuando un jugador falla y ya no quedan preguntas de otras fotos del creador.
+`{ texto, opciones: string[3], correcta, activa: boolean, aleatorio: number (0–1, para elegir al azar) }`. Nadie la lee desde el cliente. Se carga con `npm run banco` desde `functions/scripts/banco.json`.
 
 ### posts/{postId}/meGusta/{uid}
 `{ creadoEn }`. Lectura: registrados. Escritura: solo Functions (para mantener contadores).
@@ -91,15 +96,15 @@ La pregunta 0 es siempre la del creador.
 `{ autorId, username, texto, creadoEn }`. Lectura: quien desbloqueó la foto y el creador. Escritura: solo Functions.
 
 ## users/{uid}/desbloqueos/{postId}
-`{ creadorId, orden, via: "acierto" | "pago", monedas, creadoEn }`. Lectura: dueño. Escritura: solo Functions.
+`{ creadorId, orden, via: "acierto" | "pago", monedas, monedasRegalo, creadoEn }`. Lectura: dueño. Escritura: solo Functions.
 Su existencia da acceso a la foto original en Storage.
 
 ## users/{uid}/progreso/{creadorId}
-`{ siguienteOrden: number, actualizadoEn }`. Lectura: dueño. Solo Functions.
+`{ siguienteOrden: number, vistas: string[], actualizadoEn }`. `vistas` = preguntas que ya le salieron de ese creador (`p:<postId>` o `b:<idBanco>`), para no repetirlas. Lectura: dueño. Solo Functions.
 El jugador solo puede jugar el post con `orden == siguienteOrden`.
 
 ## users/{uid}/intentos/{postId}
-`{ creadorId, preguntasUsadas: number (0–3), ultimoDia: "AAAA-MM-DD", inicioEn: Timestamp | null, preguntaActual: number | null, ordenOpciones: number[] | null, pendiente: boolean, resultado: "acierto" | "fallo" | "tiempo" | "pago" | null }`.
+`{ creadorId, preguntasUsadas: number (0–3), ultimoDia: "AAAA-MM-DD", inicioEn: Timestamp | null, preguntaActual: "p:<postId>" | "b:<idBanco>" | null, ordenOpciones: number[] | null, pendiente: boolean, resultado: "acierto" | "fallo" | "tiempo" | "pago" | null }`.
 Lectura: dueño. Solo Functions.
 
 ## users/{uid}/siguiendo/{creadorId}

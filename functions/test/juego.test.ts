@@ -4,6 +4,7 @@ import { initializeApp } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { HttpsError } from "firebase-functions/v2/https";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { registrar } from "../src/cuenta.js";
 import { empezarPregunta, pagarRespuesta, responder } from "../src/juego.js";
 
 process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
@@ -30,13 +31,13 @@ async function codigo(p: Promise<unknown>): Promise<string> {
 
 const privado = async (uid = JUGADOR) => (await db.doc(`private/${uid}`).get()).data()!;
 
-async function preparar({ monedas = 10, vidas = 3 } = {}) {
+async function preparar({ monedas = 10, vidas = 3, regalo = 0 } = {}) {
   await fetch(`http://${process.env.FIRESTORE_EMULATOR_HOST}/emulator/v1/projects/${PROYECTO}/databases/(default)/documents`, { method: "DELETE" });
   const b = db.batch();
   for (const uid of [JUGADOR, CREADOR]) {
     b.set(db.doc(`users/${uid}`), { username: uid, totalIntentos: 0, totalFallos: 0, totalDesbloqueos: 0 });
     b.set(db.doc(`private/${uid}`), {
-      monedas: uid === JUGADOR ? monedas : 0, vidas: uid === JUGADOR ? vidas : 3, vidasVuelvenEn: null, vidasDia: null,
+      monedas: uid === JUGADOR ? monedas : 0, monedasRegalo: uid === JUGADOR ? regalo : 0, vidas: uid === JUGADOR ? vidas : 3, vidasVuelvenEn: null, vidasDia: null,
       gananciasEnEspera: 0, gananciasDisponibles: 0,
     });
   }
@@ -44,10 +45,10 @@ async function preparar({ monedas = 10, vidas = 3 } = {}) {
   [1, 3, 2].forEach((precio, orden) => {
     const ref = db.doc(`posts/p${orden}`);
     b.set(ref, { creadorId: CREADOR, orden, precio, tiempo: Math.min(30, 10 + 5 * (precio - 1)), estado: "aprobada", oculta: false, intentos: 0, fallos: 0, desbloqueos: 0 });
-    for (let n = 0; n < 3; n++) {
-      b.set(ref.collection("preguntas").doc(String(n)), { texto: `P${orden}-${n}`, opciones: [`bien${n}`, "mal1", "mal2"], correcta: 0 });
-    }
+    b.set(ref.collection("preguntas").doc("0"), { texto: `P${orden}`, opciones: [`bien${orden}`, "mal1", "mal2"], correcta: 0 });
   });
+  // Banco de preguntas generales.
+  ["B0", "B1"].forEach((t, i) => b.set(db.doc(`bancoPreguntas/${t}`), { texto: t, opciones: [`bien${t}`, "mal1", "mal2"], correcta: 0, activa: true, aleatorio: 0.2 + i * 0.5 }));
   await b.commit();
 }
 
@@ -60,11 +61,11 @@ describe("empezarPregunta", () => {
 
   it("devuelve la pregunta y las opciones sin la respuesta", async () => {
     const r = await empezarPregunta(JUGADOR, { postId: "p0" }, T0, sinAzar);
-    expect(r).toMatchObject({ pregunta: "P0-0", numero: 1, tiempo: 10, vidas: 2 });
+    expect(r).toMatchObject({ pregunta: "P0", numero: 1, tiempo: 10, vidas: 2 });
     expect(r.opciones).toHaveLength(3);
     expect(Object.keys(r)).not.toContain("correcta");
     const intento = (await db.doc(`users/${JUGADOR}/intentos/p0`).get()).data()!;
-    expect(intento).toMatchObject({ pendiente: true, preguntaActual: 0, preguntasUsadas: 1 });
+    expect(intento).toMatchObject({ pendiente: true, preguntaActual: "p:p0", preguntasUsadas: 1 });
   });
 
   it("no deja saltarse niveles", async () => {
@@ -73,7 +74,7 @@ describe("empezarPregunta", () => {
 
   it("se salta los niveles ocultos", async () => {
     await db.doc("posts/p0").update({ oculta: true });
-    expect((await empezarPregunta(JUGADOR, { postId: "p1" }, T0)).pregunta).toBe("P1-0");
+    expect((await empezarPregunta(JUGADOR, { postId: "p1" }, T0)).pregunta).toBe("P1");
   });
 
   it("no deja jugar las fotos propias", async () => {
@@ -112,13 +113,13 @@ describe("responder", () => {
     expect(post).toMatchObject({ intentos: 1, fallos: 0, desbloqueos: 1 });
     expect((await db.doc(`users/${CREADOR}`).get()).data()).toMatchObject({ totalIntentos: 1, totalFallos: 0, totalDesbloqueos: 1 });
     // Ya puede jugar el siguiente nivel.
-    expect((await empezarPregunta(JUGADOR, { postId: "p1" }, seg(10))).pregunta).toBe("P1-0");
+    expect((await empezarPregunta(JUGADOR, { postId: "p1" }, seg(10))).pregunta).toBe("P1");
   });
 
   it("fallo: gasta una vida y cuenta el fallo", async () => {
     const r0 = await empezarPregunta(JUGADOR, { postId: "p0" }, T0, sinAzar);
     const r = await responder(JUGADOR, { postId: "p0", opcion: r0.opciones.indexOf("mal1") }, seg(3));
-    expect(r).toMatchObject({ correcta: false, motivo: "incorrecta", vidas: 2, preguntasRestantes: 2 });
+    expect(r).toMatchObject({ correcta: false, motivo: "incorrecta", vidas: 2 });
     expect((await db.doc(`users/${JUGADOR}/desbloqueos/p0`).get()).exists).toBe(false);
     expect((await db.doc("posts/p0").get()).data()).toMatchObject({ intentos: 1, fallos: 1, desbloqueos: 0 });
   });
@@ -152,15 +153,37 @@ describe("responder", () => {
     expect(await codigo(empezarPregunta(JUGADOR, { postId: "p0" }, seg(60)))).toBe("ya-intentaste-hoy");
   });
 
-  it("al día siguiente toca la siguiente pregunta, y tras 3 fallos solo queda pagar", async () => {
-    for (let d = 0; d < 3; d++) {
+  it("al día siguiente sale la pregunta de otra foto sin resolver, luego el banco, sin repetir nunca", async () => {
+    const vistas: string[] = [];
+    for (let d = 0; d < 4; d++) {
       const r0 = await empezarPregunta(JUGADOR, { postId: "p0" }, dias(d), sinAzar);
-      expect(r0.pregunta).toBe(`P0-${d}`);
+      vistas.push(r0.pregunta);
       expect(r0.numero).toBe(d + 1);
       await responder(JUGADOR, { postId: "p0", opcion: r0.opciones.indexOf("mal1") }, new Date(dias(d).getTime() + 2000));
     }
-    expect(await codigo(empezarPregunta(JUGADOR, { postId: "p0" }, dias(3)))).toBe("sin-preguntas");
-    expect((await pagarRespuesta(JUGADOR, { postId: "p0" }, dias(3))).respuesta).toBe("bien2");
+    expect(vistas[0]).toBe("P0");
+    expect(vistas.slice(1, 3).sort()).toEqual(["P1", "P2"]);
+    expect(vistas[3]).toMatch(/^B[01]$/);
+    const ultima = await empezarPregunta(JUGADOR, { postId: "p0" }, dias(4), sinAzar);
+    expect(ultima.pregunta).toMatch(/^B[01]$/);
+    expect(ultima.pregunta).not.toBe(vistas[3]);
+    await responder(JUGADOR, { postId: "p0", opcion: -1 }, dias(4));
+    // Ya vio todas: solo queda pagar.
+    expect(await codigo(empezarPregunta(JUGADOR, { postId: "p0" }, dias(5)))).toBe("sin-preguntas");
+    expect((await pagarRespuesta(JUGADOR, { postId: "p0" }, dias(5))).respuesta).toBe(`bien${ultima.pregunta}`);
+  });
+
+  it("una foto cuya pregunta ya vio en otra foto usa otra pregunta", async () => {
+    // Falla p0 hoy; mañana le sale P1 o P2 en p0 y acierta.
+    let r0 = await empezarPregunta(JUGADOR, { postId: "p0" }, T0, sinAzar);
+    await responder(JUGADOR, { postId: "p0", opcion: r0.opciones.indexOf("mal1") }, seg(2));
+    r0 = await empezarPregunta(JUGADOR, { postId: "p0" }, dias(1), sinAzar);
+    const prestada = r0.pregunta;
+    await responder(JUGADOR, { postId: "p0", opcion: r0.opciones.indexOf(`bien${prestada.slice(1)}`) }, new Date(dias(1).getTime() + 2000));
+    expect((await db.doc(`users/${JUGADOR}/desbloqueos/p0`).get()).exists).toBe(true);
+    // En p1 ya no puede salir P0 (vista) ni la pregunta prestada.
+    const r1 = await empezarPregunta(JUGADOR, { postId: "p1" }, dias(1), sinAzar);
+    expect(["P0", prestada]).not.toContain(r1.pregunta);
   });
 
   it("al perder la tercera vida se bloquea 24 horas en todos los creadores", async () => {
@@ -180,12 +203,29 @@ describe("responder", () => {
   });
 });
 
+describe("registrar", () => {
+  beforeEach(() => preparar());
+
+  it("los usuarios nuevos reciben 100 monedas de regalo y 3 vidas", async () => {
+    await registrar("nuevo", "n@x.com", { username: "nuevo_1", nombreReal: "Ana Pérez", fechaNacimiento: "1999-03-10", intereses: ["Viajes", "Cine", "Arte"], aceptaTerminos: true }, T0);
+    expect(await privado("nuevo")).toMatchObject({ monedas: 100, monedasRegalo: 100, vidas: 3 });
+  });
+
+  it("rechaza a menores de 18 y nombres repetidos", async () => {
+    const base = { nombreReal: "Ana Pérez", intereses: ["Viajes", "Cine", "Arte"], aceptaTerminos: true };
+    expect(await codigo(registrar("u1", null, { ...base, username: "joven", fechaNacimiento: "2010-01-01" }, T0))).toBe("menor-de-edad");
+    await registrar("u2", null, { ...base, username: "repetido", fechaNacimiento: "1990-01-01" }, T0);
+    expect(await codigo(registrar("u3", null, { ...base, username: "Repetido", fechaNacimiento: "1990-01-01" }, T0))).toBe("username-ocupado");
+  });
+});
+
 describe("pagarRespuesta", () => {
   beforeEach(() => preparar({ monedas: 10 }));
 
   it("descuenta monedas, desbloquea, paga al creador en espera y devuelve la respuesta", async () => {
     const r = await pagarRespuesta(JUGADOR, { postId: "p0" }, T0);
     expect(r).toMatchObject({ respuesta: "bien0", monedas: 9 });
+    expect((await privado()).monedasRegalo).toBe(0);
     expect((await db.doc(`users/${JUGADOR}/desbloqueos/p0`).get()).data()).toMatchObject({ via: "pago", monedas: 1 });
     expect((await db.doc(`users/${JUGADOR}/progreso/${CREADOR}`).get()).get("siguienteOrden")).toBe(1);
     expect((await privado(CREADOR)).gananciasEnEspera).toBe(5);
@@ -207,6 +247,24 @@ describe("pagarRespuesta", () => {
     await empezarPregunta(JUGADOR, { postId: "p0" }, T0, sinAzar);
     await responder(JUGADOR, { postId: "p0", opcion: 1 }, seg(2));
     expect((await pagarRespuesta(JUGADOR, { postId: "p0" }, seg(5))).respuesta).toBe("bien0");
+  });
+
+  it("las monedas de regalo desbloquean la foto pero no pagan al creador", async () => {
+    await db.doc(`private/${JUGADOR}`).update({ monedas: 100, monedasRegalo: 100 });
+    await pagarRespuesta(JUGADOR, { postId: "p0" }, T0);
+    expect(await privado()).toMatchObject({ monedas: 99, monedasRegalo: 99 });
+    expect((await db.doc(`users/${JUGADOR}/desbloqueos/p0`).get()).exists).toBe(true);
+    expect((await privado(CREADOR)).gananciasEnEspera).toBe(0);
+    expect((await db.collection(`private/${CREADOR}/ganancias`).get()).size).toBe(0);
+    expect((await db.doc("posts/p0").get()).data()).toMatchObject({ monedasGastadas: 0, monedasRegalo: 1 });
+  });
+
+  it("si mezcla regalo y compradas, el creador cobra solo las compradas", async () => {
+    await db.doc(`private/${JUGADOR}`).update({ monedas: 10, monedasRegalo: 1 });
+    await pagarRespuesta(JUGADOR, { postId: "p0" }, T0); // 1 de regalo
+    await pagarRespuesta(JUGADOR, { postId: "p1" }, T0); // 3 compradas
+    expect(await privado()).toMatchObject({ monedas: 6, monedasRegalo: 0 });
+    expect((await privado(CREADOR)).gananciasEnEspera).toBe(15);
   });
 
   it("sin vidas sí se puede pagar", async () => {

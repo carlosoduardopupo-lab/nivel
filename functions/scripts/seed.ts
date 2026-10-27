@@ -7,6 +7,7 @@ import { getStorage } from "firebase-admin/storage";
 import sharp from "sharp";
 import { BUCKET, PROYECTO, enNube } from "./entorno.js";
 import { BGS, CARS, art } from "../../web/src/arte.js";
+import { cargarBanco } from "./cargar-banco.js";
 
 if (enNube) {
   console.error("El script de datos de prueba solo funciona con los emuladores.");
@@ -83,19 +84,6 @@ const CREADORES: Creador[] = [
   ] },
 ];
 
-// Preguntas extra (las "generadas por IA" en la app real). Se reparten sin repetir dentro de una foto.
-const EXTRA: Nivel[] = [
-  ["¿Qué estación del año prefiero?", ["Verano", "Invierno", "Otoño"], 0, 0],
-  ["¿Perro o gato?", ["Perro", "Gato", "Ninguno"], 0, 0],
-  ["¿Café o té?", ["Café", "Té", "Ninguno"], 0, 0],
-  ["¿Madrugo o trasnocho?", ["Madrugo", "Trasnocho", "Depende"], 1, 0],
-  ["¿Mi número favorito?", ["3", "7", "9"], 1, 0],
-  ["¿Ciudad o campo?", ["Ciudad", "Campo", "Las dos"], 0, 0],
-  ["¿Qué red social uso más?", ["Instagram", "TikTok", "YouTube"], 1, 0],
-  ["¿Dulce favorito?", ["Chocolate", "Gomitas", "Helado"], 0, 0],
-  ["¿Cuántos hermanos tengo?", ["0", "1", "2"], 2, 0],
-  ["¿Mi día favorito de la semana?", ["Viernes", "Sábado", "Domingo"], 1, 0],
-];
 
 const INTERESES_JUGADOR = ["Viajes", "Música", "Fitness"];
 const tiempoDe = (p: number) => Math.min(30, 10 + 5 * (p - 1));
@@ -129,7 +117,6 @@ async function borrarTodo() {
 async function main() {
   await borrarTodo();
   const ahora = Date.now();
-  let extra = 0;
 
   for (const [ci, c] of CREADORES.entries()) {
     const uid = `uid_${c.username}`;
@@ -148,7 +135,7 @@ async function main() {
     b.set(db.doc(`usernames/${c.username}`), { uid });
     b.set(db.doc(`private/${uid}`), {
       nombreReal: c.username, fechaNacimiento: "1995-01-01", correo: `${c.username}@nivel.test`,
-      monedas: 0, vidas: 3, vidasVuelvenEn: null, vidasDia: null, gananciasDisponibles: 0, gananciasEnEspera: 0, stripeCuentaId: null,
+      monedas: 0, monedasRegalo: 0, vidas: 3, vidasVuelvenEn: null, vidasDia: null, gananciasDisponibles: 0, gananciasEnEspera: 0, stripeCuentaId: null,
       ajustes: { nuevas: true, vidas: true, ganancias: true, comentarios: false, comentar: true, sugeridos: true },
     });
 
@@ -167,14 +154,7 @@ async function main() {
         meGusta: 40 + ((orden * 97) % 380), desbloqueos: 0, fallos: 0, intentos: 0, reportes: 0, comentarios: 0, monedasGastadas: 0,
         creadoEn: Timestamp.fromMillis(ahora - (c.niveles.length - orden) * 86_400_000),
       });
-      const ia1 = EXTRA[extra++ % EXTRA.length];
-      const ia2 = EXTRA[extra++ % EXTRA.length];
-      const preguntas = [
-        { texto, opciones, correcta, autor: "creador" },
-        { texto: ia1[0], opciones: ia1[1], correcta: ia1[2], autor: "ia" },
-        { texto: ia2[0], opciones: ia2[1], correcta: ia2[2], autor: "ia" },
-      ];
-      preguntas.forEach((p, n) => b.set(db.doc(`posts/${postId}/preguntas/${n}`), p));
+      b.set(db.doc(`posts/${postId}/preguntas/0`), { texto, opciones, correcta, autor: "creador" });
     }
     await b.commit();
     console.log(`✓ @${c.username}: ${c.niveles.length} fotos`);
@@ -194,14 +174,15 @@ async function main() {
   b.set(db.doc("usernames/luna_misterio"), { uid });
   b.set(db.doc(`private/${uid}`), {
     nombreReal: "Luna Prueba", fechaNacimiento: "1998-05-10", correo: "luna@nivel.test",
-    monedas: 85, vidas: 3, vidasVuelvenEn: null, vidasDia: null, gananciasDisponibles: 0, gananciasEnEspera: 0, stripeCuentaId: null,
+    monedas: 100, monedasRegalo: 100, vidas: 3, vidasVuelvenEn: null, vidasDia: null, gananciasDisponibles: 0, gananciasEnEspera: 0, stripeCuentaId: null,
     ajustes: { nuevas: true, vidas: true, ganancias: true, comentarios: false, comentar: true, sugeridos: true },
   });
   for (const seguido of ["vale_fit", "sol_viajera", "chef_nocturno"]) {
     b.set(db.doc(`users/${uid}/siguiendo/uid_${seguido}`), { creadoEn: Timestamp.now() });
   }
   await b.commit();
-  console.log("✓ jugador @luna_misterio (luna@nivel.test / nivel1234) con 85 monedas");
+  console.log(`✓ ${await cargarBanco()} preguntas en el banco`);
+  console.log("✓ jugador @luna_misterio (luna@nivel.test / nivel1234) con 100 monedas de regalo");
 }
 
 main().then(

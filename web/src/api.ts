@@ -7,7 +7,7 @@ function llamar<D, R>(nombre: string) {
 }
 
 export type Pregunta = { pregunta: string; opciones: string[]; numero: number; tiempo: number; venceEn: number; vidas: number };
-export type Resultado = { correcta: boolean; motivo: "tiempo" | "incorrecta" | null; vidas: number; vidasVuelvenEn: number | null; preguntasRestantes: number };
+export type Resultado = { correcta: boolean; motivo: "tiempo" | "incorrecta" | null; vidas: number; vidasVuelvenEn: number | null };
 export type PreguntaNueva = { texto: string; correcta: string; falsas: [string, string] };
 
 export const api = {
@@ -18,8 +18,8 @@ export const api = {
   empezarPregunta: llamar<{ postId: string }, Pregunta>("empezarPregunta"),
   responder: llamar<{ postId: string; opcion: number }, Resultado>("responder"),
   pagarRespuesta: llamar<{ postId: string }, { respuesta: string; pregunta: string; monedas: number }>("pagarRespuesta"),
-  crearPublicacion: llamar<{ tipo: "foto" | "video"; precio: number; preguntas: PreguntaNueva[] }, { postId: string; ruta: string }>("crearPublicacion"),
-  misPreguntas: llamar<{ postId: string }, { preguntas: { texto: string; respuesta: string; autor: string }[] }>("misPreguntas"),
+  crearPublicacion: llamar<{ tipo: "foto" | "video"; precio: number; pregunta: PreguntaNueva }, { postId: string; ruta: string }>("crearPublicacion"),
+  miPregunta: llamar<{ postId: string }, { texto: string; respuesta: string; falsas: string[] }>("miPregunta"),
   seguir: llamar<{ creadorId: string }, void>("seguir"),
   dejarDeSeguir: llamar<{ creadorId: string }, void>("dejarDeSeguir"),
   darMeGusta: llamar<{ postId: string; valor: boolean }, { meGusta: boolean }>("darMeGusta"),

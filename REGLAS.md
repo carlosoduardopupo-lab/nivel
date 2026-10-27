@@ -10,8 +10,9 @@ Estas reglas mandan sobre todo el proyecto. Si el código y este archivo no coin
 - Cada foto es un nivel. Las fotos de un creador forman una sola fila y se juegan en orden, sin saltar.
 - En el feed, la foto se ve borrosa. Para verla: acertar una trivia de 3 opciones con tiempo límite, o pagar.
 - Tiempo según el precio: 10 segundos con 1 moneda, 5 segundos más por cada moneda extra, tope de 30 segundos.
-- Cada foto tiene 3 preguntas distintas: la del creador y dos más (escritas por él o generadas por IA si marca la casilla).
-- Un intento por día por foto. Si falla, al día siguiente le toca la siguiente pregunta; nunca se repiten. Tras fallar las 3, solo puede pagar.
+- Cada foto tiene **una sola pregunta**, escrita por el creador.
+- Un intento por día por foto. Si falla, al día siguiente reintenta esa foto con la pregunta de **otra foto del mismo creador que aún no ha resuelto**. Si no quedan, se usa una pregunta al azar del **banco de preguntas** de Nivel (`bancoPreguntas`).
+- Nunca se le repite una pregunta que ya vio de ese creador. Si ya vio todas (incluido el banco), solo puede pagar.
 - El botón "Ver respuesta · N monedas" está siempre visible. Al pagar, se muestra la respuesta correcta sobre la foto unos 3 segundos y la foto queda desbloqueada.
 - Una foto desbloqueada (acertando o pagando) queda en la colección del usuario para siempre.
 
@@ -25,7 +26,8 @@ Estas reglas mandan sobre todo el proyecto. Si el código y este archivo no coin
 - La vida se gasta al **empezar** la pregunta y se devuelve si acierta a tiempo o paga antes de que se acabe el tiempo. Así, cerrar la app a mitad de una pregunta cuenta como fallo.
 - Hay un margen de 2 segundos sobre el tiempo de la foto por la latencia de la red.
 - Con alguna vida gastada (pero no las 3), las vidas vuelven a 3 al empezar un nuevo día. Al perder la tercera, el bloqueo dura 24 horas exactas.
-- Pagar también exige que sea el siguiente nivel. Al pagar se muestra la respuesta de la pregunta abierta o de la última que le salió.
+- Pagar también exige que sea el siguiente nivel. Al pagar se muestra la respuesta de la pregunta abierta o de la última que le salió, y esa pregunta cuenta como vista.
+- La flecha "siguiente" abre directamente la pregunta de la siguiente foto.
 - El nivel de una foto se asigna al aprobarla. Las fotos ocultas por reportes se saltan en la fila.
 - Me gusta y comentarios: solo quien desbloqueó la foto (y el creador comenta en las suyas).
 
@@ -44,8 +46,9 @@ Estas reglas mandan sobre todo el proyecto. Si el código y este archivo no coin
 - Filtros: Siguiendo (solo creadores seguidos con fotos nuevas), Más difíciles, Populares, Para ti (cruce de intereses), Nuevos.
 
 ## Monedas y dinero
+- **Monedas de bienvenida:** cada usuario nuevo recibe 100 monedas de regalo. Sirven para ver fotos, pero **no generan pago al creador**. Al pagar se gastan primero las de regalo.
 - Paquetes: 100 por $0.99; 550 por $4.99 (+10%); 1.150 por $9.99 (+15%); 2.400 por $19.99 (+20%). Las monedas no caducan.
-- Pago al creador: 5 milésimas de dólar ($0.005) por cada moneda gastada en sus publicaciones.
+- Pago al creador: 5 milésimas de dólar ($0.005) por cada moneda **comprada** gastada en sus publicaciones.
 - Lo ganado queda "en espera" 7 días antes de estar disponible.
 - Retiro mínimo: $50. La comisión del retiro ($2 + 0.25% + $0.25) se descuenta al creador.
 - El dinero se guarda en milésimas de dólar (enteros): 1 moneda gastada = 5 milésimas.

@@ -42,9 +42,9 @@ export const pagarRespuesta = onCall((req) => juego.pagarRespuesta(uidDe(req), {
 // Publicaciones
 export const crearPublicacion = onCall((req) => {
   const d = datos(req);
-  return publicaciones.crearPublicacion(uidDe(req), { tipo: d.tipo, precio: d.precio, preguntas: d.preguntas, usarIA: d.usarIA });
+  return publicaciones.crearPublicacion(uidDe(req), { tipo: d.tipo, precio: d.precio, pregunta: d.pregunta });
 });
-export const misPreguntas = onCall((req) => publicaciones.misPreguntas(uidDe(req), { postId: id(datos(req).postId) }));
+export const miPregunta = onCall((req) => publicaciones.miPregunta(uidDe(req), { postId: id(datos(req).postId) }));
 export const procesarSubida = onObjectFinalized({ memory: "1GiB", timeoutSeconds: 120 }, (ev) =>
   publicaciones.procesarSubida(ev.data.bucket, ev.data.name, ev.data.contentType, ev.data.metadata),
 );

@@ -24,6 +24,8 @@ export function id(v: unknown, campo = "el identificador"): string {
 
 export type Privado = {
   monedas: number;
+  /** Parte de `monedas` que es de regalo (no genera pago al creador). */
+  monedasRegalo?: number;
   vidas: number;
   vidasVuelvenEn: Timestamp | null;
   vidasDia: string | null;

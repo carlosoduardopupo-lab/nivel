@@ -105,13 +105,13 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
     if (r <= 0) responder(-1);
   }, [activa, ahora, responder]);
 
-  async function empezar() {
-    if (!post || ocupado) return;
+  async function empezar(id = post?.id) {
+    if (!id || ocupado) return;
     setOcupado(true);
     try {
-      const p = await api.empezarPregunta({ postId: post.id });
+      const p = await api.empezarPregunta({ postId: id });
       enviado.current = false;
-      setActiva({ postId: post.id, p });
+      setActiva({ postId: id, p });
     } catch (e) {
       const { codigo, mensaje } = errorDe(e);
       aviso(mensaje);
@@ -153,6 +153,13 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
     }
   }
 
+  /** Si la foto se puede jugar ahora mismo (sin pregunta fallada hoy y con vidas). */
+  function puedeEmpezar(p: Post) {
+    const it = intentos[p.id];
+    if (it?.pendiente) return true;
+    return it?.ultimoDia !== diaDe(new Date()) && vidasAhora(privado) > 0;
+  }
+
   if (!posts || idx === null) return <><Barra titulo="" /><Cargando /></>;
   if (!creador) return <><Barra titulo="" /><p className="sub" style={{ textAlign: "center", padding: 40 }}>Este creador no existe.</p></>;
   if (id === uid) return <><Barra titulo={"@" + creador.username} /><p className="sub" style={{ textAlign: "center", padding: 40 }}>Estas son tus fotos. Míralas en tu perfil.</p></>;
@@ -163,7 +170,6 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
   const pendienteAbierta = !!intento?.pendiente && !!intento.inicioEn && intento.inicioEn.toMillis() + post.tiempo * 1000 + MARGEN > ahora;
   const usadas = intento?.preguntasUsadas ?? 0;
   const falloHoy = !pendienteAbierta && intento?.ultimoDia === hoy;
-  const sinPreguntas = !pendienteAbierta && usadas >= 3;
   const vuelvenEn = privado?.vidasVuelvenEn?.toMillis() ?? 0;
   const todoHecho = siguiente === -1;
 
@@ -178,14 +184,12 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
         {activa.p.opciones.map((o, i) => <button key={i} className="opt" onClick={() => responder(i)}>{o}</button>)}
       </>
     );
-  } else if (sinPreguntas) {
-    centro = <><p style={{ textAlign: "center", fontWeight: 700, fontSize: 16 }}>Usaste las 3 preguntas de esta foto</p><p style={{ textAlign: "center", fontSize: 13, opacity: 0.8, marginTop: 4 }}>Ahora solo puedes verla pagando.</p></>;
   } else if (falloHoy) {
     centro = (
       <>
         <p style={{ textAlign: "center", fontWeight: 700, fontSize: 16, color: "#FFB1AE" }}><Ic n="x" /> {intento?.resultado === "tiempo" ? "Se acabó el tiempo" : "Respuesta incorrecta"}</p>
         <p style={{ textAlign: "center", fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-          {vidas ? `Te quedan ${vidas} ${vidas === 1 ? "vida" : "vidas"} hoy.` : "Te quedaste sin vidas."} Mañana tendrás otra pregunta (intento {usadas + 1} de 3).
+          {vidas ? `Te quedan ${vidas} ${vidas === 1 ? "vida" : "vidas"} hoy.` : "Te quedaste sin vidas."} Mañana tendrás otra pregunta.
         </p>
       </>
     );
@@ -200,11 +204,11 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
   } else {
     centro = (
       <>
-        <p className="q" style={{ textAlign: "center" }}>{pendienteAbierta ? "Tienes una pregunta abierta" : usadas ? `Pregunta ${usadas + 1} de 3` : "¿Lo conoces?"}</p>
+        <p className="q" style={{ textAlign: "center" }}>{pendienteAbierta ? "Tienes una pregunta abierta" : usadas ? "Nueva pregunta" : "¿Lo conoces?"}</p>
         <p style={{ textAlign: "center", fontSize: 13, opacity: 0.85, margin: "4px 0 12px" }}>
           {pendienteAbierta ? "Corre, el tiempo sigue contando." : `Tendrás ${post.tiempo} segundos. Si fallas, gastas una vida.`}
         </p>
-        <button className="opt" onClick={empezar} disabled={ocupado}>{ocupado ? "Un momento…" : pendienteAbierta ? "Volver a la pregunta" : "Empezar"}</button>
+        <button className="opt" onClick={() => empezar()} disabled={ocupado}>{ocupado ? "Un momento…" : pendienteAbierta ? "Volver a la pregunta" : "Empezar"}</button>
       </>
     );
   }
@@ -238,7 +242,13 @@ export function Creador({ id, postId }: { id: string; postId?: string }) {
               </div>
             )}
             <Lateral post={post} onComentarios={() => abrirHoja(<HojaComentarios postId={post.id} />)}
-              siguiente={idx + 1 < posts.length && (desb.has(posts[idx + 1].id) || idx + 1 === siguiente) ? () => { setIdx(idx + 1); setRevelar(null); } : undefined} />
+              siguiente={idx + 1 < posts.length && (desb.has(posts[idx + 1].id) || idx + 1 === siguiente) ? () => {
+                const sig = posts[idx + 1];
+                setIdx(idx + 1);
+                setRevelar(null);
+                // La flecha lleva directo a la pregunta de la siguiente foto, sin la pantalla de "¿Lo conoces?".
+                if (!desb.has(sig.id) && puedeEmpezar(sig)) empezar(sig.id);
+              } : undefined} />
           </>
         ) : (
           <>

@@ -18,7 +18,7 @@ npm --prefix functions install && npm --prefix functions run build
 npm --prefix web install
 
 npm run emuladores        # terminal 1: emuladores (UI en http://localhost:4000)
-npm run seed              # terminal 2: carga 6 creadores (34 fotos) y un jugador de prueba
+npm run seed              # terminal 2: carga 6 creadores (34 fotos), el banco de preguntas y un jugador de prueba
 npm run web               # terminal 2: la web en http://localhost:5173
 ```
 Si cambias algo en `functions/src`, vuelve a ejecutar `npm --prefix functions run build` (o deja `npm --prefix functions run build:watch` abierto).
@@ -36,6 +36,9 @@ npm run moderar -- ocultas            # ocultadas por 3 reportes
 npm run moderar -- mostrar <postId>
 ```
 Añade `--nube` para hacerlo sobre el proyecto real (necesita `GOOGLE_APPLICATION_CREDENTIALS`).
+
+## Banco de preguntas
+Las preguntas generales están en `functions/scripts/banco.json` (pregunta, correcta, falsa 1, falsa 2). Después de editarlo: `npm run banco` (o `npm run banco -- --nube`).
 
 ## Pruebas
 ```bash

@@ -1,8 +1,9 @@
 // Constantes de REGLAS.md. El servidor es la única fuente de verdad.
 
 export const VIDAS_POR_DIA = 3;
+// Monedas de bienvenida: sirven para ver fotos, pero no generan pago al creador.
+export const MONEDAS_BIENVENIDA = 100;
 export const BLOQUEO_MS = 24 * 60 * 60 * 1000;
-export const PREGUNTAS_POR_POST = 3;
 export const MARGEN_RESPUESTA_MS = 2000;
 
 export const PRECIO_MIN_FOTO = 1;

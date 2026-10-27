@@ -18,18 +18,17 @@ type PreguntaEntrada = { texto: unknown; correcta: unknown; falsas: unknown };
 export type DatosPublicacion = {
   tipo: unknown;
   precio: unknown;
-  preguntas: unknown;
-  usarIA?: unknown;
+  pregunta: unknown;
 };
 
-function validarPregunta(p: PreguntaEntrada, n: number) {
-  const t = texto(p?.texto, `la pregunta ${n}`, MAX_PREGUNTA, 3);
-  const correcta = texto(p?.correcta, `la respuesta correcta de la pregunta ${n}`, MAX_RESPUESTA);
+function validarPregunta(p: PreguntaEntrada) {
+  const t = texto(p?.texto, "la pregunta", MAX_PREGUNTA, 3);
+  const correcta = texto(p?.correcta, "la respuesta correcta", MAX_RESPUESTA);
   const falsas = Array.isArray(p?.falsas) ? p.falsas : [];
-  const f1 = texto(falsas[0], `la primera respuesta falsa de la pregunta ${n}`, MAX_RESPUESTA);
-  const f2 = texto(falsas[1], `la segunda respuesta falsa de la pregunta ${n}`, MAX_RESPUESTA);
+  const f1 = texto(falsas[0], "la primera respuesta falsa", MAX_RESPUESTA);
+  const f2 = texto(falsas[1], "la segunda respuesta falsa", MAX_RESPUESTA);
   if (new Set([correcta, f1, f2].map((x) => x.toLowerCase())).size < 3) {
-    fallo("respuestas-repetidas", `Las tres respuestas de la pregunta ${n} deben ser distintas.`, "invalid-argument");
+    fallo("respuestas-repetidas", "Las tres respuestas deben ser distintas.", "invalid-argument");
   }
   // La correcta se guarda en la posición 0; el orden se mezcla para cada jugador.
   return { texto: t, opciones: [correcta, f1, f2], correcta: 0 };
@@ -48,15 +47,7 @@ export async function crearPublicacion(uid: string, datos: DatosPublicacion, aho
     fallo("precio-invalido", `El precio debe estar entre ${min} y ${max} monedas.`, "invalid-argument");
   }
 
-  if (datos.usarIA === true) {
-    fallo("ia-no-disponible", "Las preguntas de IA aún no están disponibles. Escribe tú las preguntas 2 y 3.", "invalid-argument");
-  }
-  const entrada = Array.isArray(datos.preguntas) ? (datos.preguntas as PreguntaEntrada[]) : [];
-  if (entrada.length !== 3) fallo("faltan-preguntas", "Escribe las 3 preguntas.", "invalid-argument");
-  const preguntas = entrada.map((p, i) => validarPregunta(p, i + 1));
-  if (new Set(preguntas.map((p) => p.texto.toLowerCase())).size < 3) {
-    fallo("preguntas-repetidas", "Las 3 preguntas deben ser distintas.", "invalid-argument");
-  }
+  const pregunta = validarPregunta(datos.pregunta as PreguntaEntrada);
 
   const ref = db().collection("posts").doc();
   const ruta = `originales/${uid}/${ref.id}`;
@@ -80,7 +71,8 @@ export async function crearPublicacion(uid: string, datos: DatosPublicacion, aho
     monedasGastadas: 0,
     creadoEn: Timestamp.fromDate(ahora),
   });
-  preguntas.forEach((p, n) => lote.set(ref.collection("preguntas").doc(String(n)), { ...p, autor: "creador" }));
+  // Una sola pregunta por foto. Si el jugador falla, al día siguiente le sale la de otra foto (ver juego.ts).
+  lote.set(ref.collection("preguntas").doc("0"), { ...pregunta, autor: "creador" });
   await lote.commit();
   return { postId: ref.id, ruta };
 }
@@ -169,13 +161,11 @@ async function duracionVideo(ruta: string): Promise<number | null> {
   return +m[1] * 3600 + +m[2] * 60 + +m[3];
 }
 
-/** El creador consulta las preguntas de su propia publicación (el cliente nunca las lee directo). */
-export async function misPreguntas(uid: string, datos: { postId: string }): Promise<{ preguntas: { texto: string; respuesta: string; autor: string }[] }> {
+/** El creador consulta la pregunta de su propia publicación (el cliente nunca la lee directo). */
+export async function miPregunta(uid: string, datos: { postId: string }): Promise<{ texto: string; respuesta: string; falsas: string[] }> {
   const ref = db().doc(`posts/${datos.postId}`);
   const post = await ref.get();
   if (!post.exists || post.get("creadorId") !== uid) fallo("no-existe", "Esa publicación no existe.", "not-found");
-  const snap = await ref.collection("preguntas").orderBy("__name__").get();
-  return {
-    preguntas: snap.docs.map((d) => ({ texto: d.get("texto"), respuesta: d.get("opciones")[d.get("correcta")], autor: d.get("autor") ?? "creador" })),
-  };
+  const p = (await ref.collection("preguntas").doc("0").get()).data()!;
+  return { texto: p.texto, respuesta: p.opciones[p.correcta], falsas: (p.opciones as string[]).filter((_, i) => i !== p.correcta) };
 }

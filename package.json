@@ -10,7 +10,8 @@
     "web": "npm --prefix web run dev",
     "moderar": "npm --prefix functions run moderar --",
     "test:juego": "firebase emulators:exec --project demo-nivel-pruebas --only firestore \"npm --prefix functions test\"",
-    "test": "npm run test:reglas && npm run test:juego"
+    "test": "npm run test:reglas && npm run test:juego",
+    "banco": "npm --prefix functions run banco --"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
