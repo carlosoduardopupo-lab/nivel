@@ -56,6 +56,11 @@ Estas reglas mandan sobre todo el proyecto. Si el código y este archivo no coin
 - No llegan avisos de usuarios bloqueados. En iPhone, el push solo funciona con Blurry añadida a la pantalla de inicio.
 - Lógica en `functions/src/notificaciones.ts`; la tarea `avisarVidas` corre cada 15 minutos.
 
+## Estadísticas de uso
+- Contadores diarios en `estadisticas/{AAAA-MM-DD}` (hora de Nueva York): usuarios activos (una vez al día por usuario, al abrir la app), cuentas nuevas, preguntas jugadas, aciertos, fotos pagadas y monedas gastadas, publicaciones aprobadas, reels, comentarios, seguimientos, amigos invitados que jugaron, veces que se compartió, instalaciones como app, visitas a la página de descarga y descargas del APK.
+- Solo las ve el administrador (`ADMINS` en `web/src/util.ts` y en `firestore.rules`): Ajustes → Administración → Estadísticas de uso, o `npm run estadisticas -- --nube`.
+- No guardan datos personales: solo cuántas veces pasa cada cosa al día.
+
 ## Seguridad y cuenta
 - **Bloquear**: desde el perfil de alguien (⋯) o un reel. Quien bloquea deja de ver sus fotos, reels, comentarios y en la búsqueda; se rompen los seguimientos en los dos sentidos y el bloqueado no puede seguirle ni comentar en sus fotos o reels. No se avisa. Se deshace en Ajustes → Cuentas bloqueadas.
 - **Reportar reels**: como las fotos (inapropiado, menor, robado, otro); con 3 reportes de personas distintas el reel se oculta hasta revisarlo (`npm run moderar -- reels`).

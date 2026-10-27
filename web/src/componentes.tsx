@@ -129,6 +129,7 @@ export function PantallaCompleta({ rutas, inicio = 0, alCerrar }: { rutas: strin
 
 /** Abre el menú del sistema para compartir; si no existe (ordenador), copia el enlace. */
 async function compartir(datos: { title: string; text: string; url: string }, aviso: (t: string) => void) {
+  api.evento({ tipo: "compartir" }).catch(() => {});
   if (navigator.share) {
     await navigator.share(datos).catch(() => {});
     return;

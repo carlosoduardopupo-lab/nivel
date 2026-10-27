@@ -157,3 +157,23 @@ textarea.field{display:block;width:100%;padding:12px;min-height:76px;resize:none
 .tarjeta-reel .lado button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:26px;color:#fff;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))}
 .tarjeta-reel .lado small{font-size:12px;font-weight:700}
 .tarjeta-reel .info{position:absolute;left:14px;right:70px;bottom:calc(112px + env(safe-area-inset-bottom,0px));z-index:2}
+
+/* Panel de estadísticas (solo administradores). */
+.stats-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.stats-tile{background:var(--surface2);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stats-tile small{font-size:11px;color:var(--muted);font-weight:600}
+.stats-tile b{font-family:var(--f-display);font-size:22px;font-variant-numeric:tabular-nums}
+.stats-tile span{font-size:11px;font-weight:600}
+.stats-grafica{margin:18px 0 0;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px}
+.stats-grafica figcaption{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700;margin-bottom:10px}
+.stats-valor{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+.stats-valor b{color:var(--fg)}
+.stats-barras{display:flex;align-items:flex-end;gap:2px;height:110px;border-bottom:1px solid var(--line)}
+.stats-col{flex:1;height:100%;display:flex;align-items:flex-end;padding:0;min-width:0}
+.stats-col i{display:block;width:100%;background:var(--rosa);opacity:.55;border-radius:4px 4px 0 0;transition:opacity .15s}
+.stats-col.on i{opacity:1}
+.stats-eje{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.stats-tabla{border-collapse:collapse;font-size:12px;white-space:nowrap}
+.stats-tabla th,.stats-tabla td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.stats-tabla th{color:var(--muted);font-weight:600;white-space:normal;min-width:70px;vertical-align:bottom}
+.stats-tabla th:first-child,.stats-tabla td:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}

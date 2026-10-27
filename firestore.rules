@@ -78,6 +78,12 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Estadísticas de uso: solo los administradores (también en web/src/util.ts) ----------
+    match /estadisticas/{dia} {
+      allow read: if registrado() && request.auth.uid in ['y4KUHbYPChSM2QFa7VMoAyX3a952'];
+      allow write: if false;
+    }
+
     // ---------- Reels (gratis; los escribe solo Functions) ----------
     match /reels/{reelId} {
       // Las consultas deben filtrar estado == 'publicado' (o autorId == yo).

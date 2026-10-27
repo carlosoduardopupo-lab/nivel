@@ -21,6 +21,7 @@
     "ignore": ["firebase.json", "**/node_modules/**"],
     "rewrites": [
       { "source": "/api/escaparate", "function": { "functionId": "escaparatePublico", "region": "us-central1" } },
+      { "source": "/api/evento", "function": { "functionId": "eventoPublico", "region": "us-central1" } },
       { "source": "/descargar", "destination": "/descargar/index.html" },
       { "source": "/download", "destination": "/descargar/index.html" },
       { "source": "/terminos", "destination": "/terminos/index.html" },

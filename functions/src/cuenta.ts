@@ -1,5 +1,6 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { db, fallo, texto } from "./comun.js";
+import { contar } from "./estadisticas.js";
 import { EDAD_MINIMA, INTERESES, MAX_INTERESES, MONEDAS_BIENVENIDA, USERNAME_RE, VIDAS_POR_DIA, edadDe } from "./reglas.js";
 
 export const AJUSTES_POR_DEFECTO = {
@@ -113,6 +114,7 @@ export async function registrar(uid: string, correo: string | null, datos: Datos
     });
     if (invitoUid) tx.set(db().doc(`private/${invitoUid}/referidos/${uid}`), { estado: "pendiente", creadoEn: t });
   });
+  await contar({ registros: 1 }, ahora);
   return { username };
 }
 

@@ -42,6 +42,13 @@ Añade `--nube` para hacerlo sobre el proyecto real (`blurry-78f0d`). Usa tu ses
 gcloud auth application-default login
 ```
 
+## Estadísticas de uso
+```bash
+npm run estadisticas -- --nube              # últimos 14 días
+npm run estadisticas -- rellenar --nube     # reconstruye días anteriores con los datos existentes
+```
+En la app: Ajustes → Administración → Estadísticas de uso (solo administradores).
+
 ## Banco de preguntas
 Las preguntas generales están en `functions/scripts/banco.json` (pregunta, correcta, falsa 1, falsa 2). Después de editarlo: `npm run banco` (o `npm run banco -- --nube`).
 Por ahora el juego publicado **no las usa** (regla actual: un intento por foto y, si fallas, solo pagando); quedan cargadas en `bancoPreguntas` para cuando se active.

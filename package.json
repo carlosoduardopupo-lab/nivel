@@ -13,7 +13,8 @@
     "test": "npm run test:reglas && npm run test:juego",
     "banco": "npm --prefix functions run banco --",
     "publicar": "npm --prefix functions run build && npm --prefix web run build && firebase deploy --project prod",
-    "publicar:web": "npm --prefix web run build && firebase deploy --project prod --only hosting"
+    "publicar:web": "npm --prefix web run build && firebase deploy --project prod --only hosting",
+    "estadisticas": "npm --prefix functions run estadisticas --"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",

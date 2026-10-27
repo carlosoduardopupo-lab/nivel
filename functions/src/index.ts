@@ -6,6 +6,7 @@ import { onObjectFinalized } from "firebase-functions/v2/storage";
 import { id } from "./comun.js";
 import * as cuenta from "./cuenta.js";
 import * as escaparate from "./escaparate.js";
+import * as estadisticas from "./estadisticas.js";
 import * as juego from "./juego.js";
 import * as notificaciones from "./notificaciones.js";
 import * as publicaciones from "./publicaciones.js";
@@ -119,4 +120,13 @@ export const borrarDispositivo = onCall((req) => notificaciones.borrarDispositiv
 export const marcarLeidas = onCall((req) => notificaciones.marcarLeidas(uidDe(req)));
 export const avisarVidas = onSchedule({ schedule: "every 15 minutes", timeZone: "America/New_York" }, async () => {
   await notificaciones.avisarVidasDevueltas();
+});
+
+// Estadísticas
+export const registrarVisita = onCall((req) => estadisticas.registrarVisita(uidDe(req)));
+export const evento = onCall((req) => { uidDe(req); return estadisticas.eventoApp({ tipo: datos(req).tipo }); });
+// Página pública de descarga (vía Hosting en /api/evento?t=visita|apk|instalar).
+export const eventoPublico = onRequest({ invoker: "public", maxInstances: 5 }, async (req, res) => {
+  const ok = await estadisticas.eventoPublico(req.query.t);
+  res.set("Cache-Control", "no-store").status(ok ? 204 : 400).send("");
 });

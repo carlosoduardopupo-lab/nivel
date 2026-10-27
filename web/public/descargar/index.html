@@ -343,7 +343,7 @@
     // Instalar como app desde el navegador (Chrome en Android).
     let promptInstalar = null;
     addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); promptInstalar = e; });
-    addEventListener("appinstalled", () => aviso("¡Blurry instalada! Ábrela desde tu pantalla de inicio."));
+    addEventListener("appinstalled", () => { contar("instalar"); aviso("¡Blurry instalada! Ábrela desde tu pantalla de inicio."); });
     $("instalar").addEventListener("click", async () => {
       if (promptInstalar) {
         promptInstalar.prompt();
@@ -357,6 +357,11 @@
     });
 
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+
+    // Estadísticas anónimas: visitas a esta página y descargas del APK.
+    function contar(t) { try { navigator.sendBeacon ? navigator.sendBeacon("/api/evento?t=" + t) : fetch("/api/evento?t=" + t, { keepalive: true }); } catch {} }
+    contar("visita");
+    $("apk").addEventListener("click", () => contar("apk"));
   </script>
 </body>
 </html>

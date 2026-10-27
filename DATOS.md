@@ -141,6 +141,9 @@ Lectura: el comprador. Solo Functions (webhook de Stripe, idempotente por id de 
 `{ uid, montoMilesimas, comisionMilesimas, netoMilesimas, stripeTransferId, estado, creadoEn }`.
 Lectura: el dueño. Solo Functions.
 
+## estadisticas/{AAAA-MM-DD}
+Contadores del día: `registros, activos, intentos, aciertos, pagos, monedasGastadas, publicaciones, reels, comentarios, seguimientos, referidos, compartidos, instalaciones, visitasDescarga, descargasApk, actualizadoEn`. Lectura: solo administradores. Solo Functions (`functions/src/estadisticas.ts`). `private/{uid}.ultimaVisita` evita contar dos veces al mismo usuario activo en un día.
+
 ## bancoPreguntas/{id}
 `{ texto, opciones: string[3], correcta: 0, activa, aleatorio }`. Preguntas generales cargadas con `npm run banco` desde `functions/scripts/banco.json`. Nadie las lee desde el cliente. Por ahora el juego publicado no las usa.
 

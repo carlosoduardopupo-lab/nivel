@@ -13,6 +13,7 @@ import ffmpegPath from "ffmpeg-static";
 import sharp from "sharp";
 import { bloqueadoPor, db, fallo, texto as textoValido } from "./comun.js";
 import { avisarComentario } from "./notificaciones.js";
+import { contar } from "./estadisticas.js";
 import { escribirComentario, exigirPerfil } from "./social.js";
 import { APROBACION_AUTOMATICA, MAX_COMENTARIO, MAX_TEXTO_REEL, REEL_MAX_SEGUNDOS } from "./reglas.js";
 
@@ -93,6 +94,7 @@ export async function comentarReel(uid: string, datos: { reelId: string; texto: 
   if (await bloqueadoPor(reel.get("autorId"), uid)) fallo("bloqueado", "No puedes comentar aquí.", "permission-denied");
   const r = await escribirComentario(ref, uid, username, t, datos.respondeA);
   await avisarComentario({ autorId: uid, autorUsername: username, duenoId: reel.get("autorId"), texto: t, respondeAUid: r.respondeAUid, reel: true });
+  await contar({ comentarios: 1 });
   return { id: r.id };
 }
 
@@ -141,6 +143,7 @@ export async function procesarReel(bucketName: string, nombre: string, contentTy
     await bucket.file(rutaPortada).save(portada, { contentType: "image/jpeg", metadata: { cacheControl: "public, max-age=86400", metadata: { firebaseStorageDownloadTokens: randomUUID() } } });
     await archivo.save(await readFile(salida), { contentType: "video/mp4", metadata: { metadata: { procesado: "1", firebaseStorageDownloadTokens: randomUUID() } } });
     await ref.update({ estado: APROBACION_AUTOMATICA ? "publicado" : "revision", rutaPortada, duracion: Math.round(segundos), publicadoEn: FieldValue.serverTimestamp() });
+    await contar({ reels: 1 });
   } catch (e) {
     logger.error("No se pudo procesar el reel", { nombre, e: String(e) });
     return rechazar("archivo-invalido");

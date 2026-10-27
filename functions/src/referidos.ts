@@ -5,6 +5,7 @@
 import { FieldValue, Timestamp, type DocumentSnapshot, type Transaction } from "firebase-admin/firestore";
 import { db, type Privado } from "./comun.js";
 import { notificar } from "./notificaciones.js";
+import { contar } from "./estadisticas.js";
 import { MAX_MONEDAS_REFERIDOS, MONEDAS_POR_REFERIDO, VIDAS_POR_DIA, diaDe } from "./reglas.js";
 
 /** Lee a quien invitó al jugador si su invitación aún no ha contado (lectura: va antes de escribir). */
@@ -39,6 +40,7 @@ export function contarReferido(tx: Transaction, uid: string, invitador: Document
 /** Aviso a quien invitó, después de la transacción. */
 export async function avisarReferido(uid: string, r: ReferidoContado | null): Promise<void> {
   if (!r) return;
+  await contar({ referidos: 1 });
   const username = (await db().doc(`users/${uid}`).get()).get("username") ?? "tu amigo";
   const premio = [r.recarga ? "tus 3 vidas" : "", r.monedas ? `${r.monedas} monedas` : ""].filter(Boolean).join(" y ");
   await notificar(r.invitadorId, {
