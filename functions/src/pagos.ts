@@ -5,6 +5,7 @@
 //      una sola vez por pago. Se llama al abrir la tienda, así que aunque cierre la página
 //      antes de volver, las monedas le llegan la próxima vez que entre.
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { logger } from "firebase-functions/v2";
 import Stripe from "stripe";
 import { db, fallo } from "./comun.js";
 
@@ -43,6 +44,10 @@ export async function crearPago(clave: string, uid: string, correo: string | nul
     metadata: { uid, paquete: d.paquete as string },
     success_url: `${origen}/?ir=tienda&pago=ok`,
     cancel_url: `${origen}/?ir=tienda`,
+  }).catch((e: unknown) => {
+    // Errores de Stripe (cuenta sin configurar, caída…): se registran y la persona ve un aviso claro.
+    logger.error("Stripe no pudo crear el pago", e instanceof Stripe.errors.StripeError ? e.message : e);
+    return fallo("pago-no-disponible", "No se pudo abrir el pago. Inténtalo de nuevo en un rato.");
   });
   await db().doc(`pagos/${s.id}`).set({
     uid, paquete: d.paquete, monedas: p.monedas, centavos: p.centavos, estado: "abierto", prueba: !s.livemode, creadoEn: Timestamp.now(),
