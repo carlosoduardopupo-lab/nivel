@@ -13,7 +13,7 @@ import { comisionRetiro, PAQUETES as PAQ, RETIRO_MINIMO_MILESIMAS } from "./regl
 /** Los paquetes que se pueden comprar (la app solo los muestra). Precio en centavos de dólar. */
 const PAQUETES: Record<string, { monedas: number; centavos: number }> = PAQ;
 
-/** Con la clave de prueba de Stripe solo compran los administradores (las monedas serían gratis). */
+/** Con una clave de prueba de Stripe (sk_test_ o rk_test_) solo compran los administradores (las monedas serían gratis). */
 const ADMINS = ["y4KUHbYPChSM2QFa7VMoAyX3a952"]; // @carli (también en web/src/util.ts)
 
 /** Direcciones a las que Stripe puede devolver a la persona después de pagar. */
@@ -21,7 +21,7 @@ const ORIGENES = ["https://blurry-78f0d.web.app", "https://blurry-78f0d.firebase
 
 function stripe(clave: string, uid: string): Stripe {
   if (!clave) fallo("pagos-apagados", "Los pagos todavía no están disponibles.");
-  if (clave.startsWith("sk_test_") && !ADMINS.includes(uid)) fallo("pagos-apagados", "Los pagos todavía no están disponibles.");
+  if (clave.includes("_test_") && !ADMINS.includes(uid)) fallo("pagos-apagados", "Los pagos todavía no están disponibles.");
   return new Stripe(clave);
 }
 
