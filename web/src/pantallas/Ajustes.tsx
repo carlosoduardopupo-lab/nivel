@@ -179,7 +179,7 @@ const REGLAS: [string, string][] = [
   ["Tiempo según el precio", "10 segundos con 1 moneda y 5 más por cada moneda extra, hasta 30."],
   ["Ver respuesta", "El botón con el precio siempre está disponible: pagas y la foto es tuya."],
   ["Precios", "De 1 a 20 monedas por foto (videos desde 3). Los creadores VIP pueden cobrar hasta 100."],
-  ["Creadores", "Reciben $0.005 por cada moneda gastada en sus publicaciones. Retiro mínimo de $15."],
+  ["Creadores", "Reciben $0.005 por cada moneda gastada en sus publicaciones. Pueden retirar a partir de 1.000 seguidores, con un mínimo de $15."],
 ];
 
 export function HojaReglas() {

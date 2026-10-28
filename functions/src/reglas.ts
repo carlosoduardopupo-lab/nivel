@@ -30,6 +30,8 @@ export const MONEDAS_POR_REFERIDO = [0, 0, 500];
 export const MAX_MONEDAS_REFERIDOS = 500;
 export const DIAS_EN_ESPERA = 7;
 export const RETIRO_MINIMO_MILESIMAS = 15_000;
+// Las ganancias se acumulan siempre, pero solo se pueden retirar con este número de seguidores.
+export const SEGUIDORES_PARA_RETIRAR = 1000;
 
 export const MIN_DESBLOQUEOS_PARA_PORCENTAJE = 20;
 

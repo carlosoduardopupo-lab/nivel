@@ -7,7 +7,7 @@ import { auth, db, storage } from "../firebase";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion } from "../sesion";
-import { dinero, FASE_PRUEBA, nf, reducirImagen } from "../util";
+import { dinero, FASE_PRUEBA, nf, reducirImagen, SEGUIDORES_PARA_RETIRAR } from "../util";
 import { HojaEditarReel, type Reel } from "./Reels";
 
 type MiPost = {
@@ -57,7 +57,8 @@ export function Perfil() {
             <div style={{ flex: 1 }}><small>GANADAS CON TUS FOTOS</small><div className="num" style={{ color: "#6FD6AE" }}><span style={{ color: "var(--oro)" }}><Ic n="coin" /></span>{nf(privado.monedasGanadas ?? 0)}</div></div>
           ) : (
             <div style={{ flex: 1 }}><small>GANANCIAS</small><div className="num" style={{ color: "#6FD6AE" }}>{dinero(privado.gananciasDisponibles)}</div>
-              {privado.gananciasEnEspera > 0 && <p style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>+{dinero(privado.gananciasEnEspera)} en espera</p>}</div>
+              {privado.gananciasEnEspera > 0 && <p style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>+{dinero(privado.gananciasEnEspera)} en espera</p>}
+              {perfil.seguidores < SEGUIDORES_PARA_RETIRAR && <p style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}><Ic n="lock" /> Se activan con {nf(SEGUIDORES_PARA_RETIRAR)} seguidores</p>}</div>
           )}
         </div>
         {FASE_PRUEBA ? <AvisoFasePrueba oscuro /> : (

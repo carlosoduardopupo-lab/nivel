@@ -36,6 +36,8 @@ export const nf = (n: number) => n.toLocaleString("es");
 export const dinero = (milesimas: number) => "$" + (Math.floor(milesimas / 10) / 100).toFixed(2);
 /** Mínimo para retirar, en milésimas (también en functions/src/reglas.ts). */
 export const RETIRO_MINIMO = 15_000;
+/** Seguidores necesarios para retirar; antes, lo ganado se acumula (también en functions/src/reglas.ts). */
+export const SEGUIDORES_PARA_RETIRAR = 1000;
 export const comisionRetiro = (milesimas: number) => 2000 + Math.round(milesimas * 0.0025) + 250;
 export const monedasTxt = (n: number) => `${n} ${n === 1 ? "moneda" : "monedas"}`;
 

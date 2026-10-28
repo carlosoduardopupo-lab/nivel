@@ -8,7 +8,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 import Stripe from "stripe";
 import { db, fallo } from "./comun.js";
-import { comisionRetiro, PAQUETES as PAQ, RETIRO_MINIMO_MILESIMAS } from "./reglas.js";
+import { comisionRetiro, PAQUETES as PAQ, RETIRO_MINIMO_MILESIMAS, SEGUIDORES_PARA_RETIRAR } from "./reglas.js";
 
 /** Los paquetes que se pueden comprar (la app solo los muestra). Precio en centavos de dólar. */
 const PAQUETES: Record<string, { monedas: number; centavos: number }> = PAQ;
@@ -143,6 +143,8 @@ export async function retirar(clave: string, uid: string): Promise<{ enviado: nu
   // 1. Se descuenta del saldo en una transacción (no se puede retirar dos veces lo mismo).
   const { disp, neto, cuenta } = await db().runTransaction(async (tx) => {
     const p = await tx.get(ref);
+    const seguidores = ((await tx.get(db().doc(`users/${uid}`))).get("seguidores") ?? 0) as number;
+    if (seguidores < SEGUIDORES_PARA_RETIRAR) fallo("pocos-seguidores", `Podrás retirar cuando tengas ${SEGUIDORES_PARA_RETIRAR.toLocaleString("es")} seguidores.`);
     const disp = (p.get("gananciasDisponibles") ?? 0) as number;
     const cuenta = p.get("stripeCuentaId") as string | null;
     if (!cuenta || p.get("stripeListo") !== true) fallo("sin-banco", "Primero conecta tu cuenta bancaria.");

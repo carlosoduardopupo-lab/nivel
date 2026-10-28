@@ -4,7 +4,7 @@ import { AvisoFasePrueba, Barra, Cargando, Corazones, TarjetaInvitar } from "../
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion, vidasAhora } from "../sesion";
-import { ADMINS, comisionRetiro, dinero, FASE_PRUEBA, fmtFalta, nf, RETIRO_MINIMO, RETIROS_ABIERTOS } from "../util";
+import { ADMINS, comisionRetiro, dinero, FASE_PRUEBA, fmtFalta, nf, RETIRO_MINIMO, RETIROS_ABIERTOS, SEGUIDORES_PARA_RETIRAR } from "../util";
 
 // Los paquetes reales se definen en el servidor (functions/src/pagos.ts). Aquí solo se muestran.
 // x = % de monedas extra por dólar respecto al paquete de 150 por $1.99 (redondeado hacia abajo).
@@ -86,12 +86,15 @@ const PAISES = [["US", "Estados Unidos"], ["MX", "México"], ["ES", "España"], 
   ["BR", "Brasil"], ["CA", "Canadá"], ["GB", "Reino Unido"], ["FR", "Francia"], ["IT", "Italia"], ["DE", "Alemania"], ["PT", "Portugal"]] as const;
 
 export function Retiro() {
-  const { privado, usuario } = useSesion();
+  const { privado, usuario, perfil } = useSesion();
   const { aviso } = useNav();
   const disp = privado?.gananciasDisponibles ?? 0;
+  const seguidores = perfil?.seguidores ?? 0;
   const com = disp ? comisionRetiro(disp) : 0;
   // Hasta que los retiros se abran a todos, solo los administradores los prueban.
   const abierto = RETIROS_ABIERTOS || (!!usuario && ADMINS.includes(usuario.uid));
+  // Lo ganado se acumula siempre; se puede retirar a partir de SEGUIDORES_PARA_RETIRAR.
+  const activo = seguidores >= SEGUIDORES_PARA_RETIRAR;
   const [banco, setBanco] = useState<{ conectada: boolean; lista: boolean } | null>(null);
   const [pais, setPais] = useState("US");
   const [ocupado, setOcupado] = useState(false);
@@ -131,7 +134,14 @@ export function Retiro() {
         <div className="line" style={{ borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 9 }}><b>Recibes</b><b style={{ color: "var(--verde)", fontSize: 16 }}>{dinero(Math.max(0, disp - com))}</b></div>
       </div>
       <p style={{ fontSize: 12, color: "var(--muted)", margin: "8px 2px 0" }}>Mínimo para retirar: $15. Comisión: $2 + 0.25% + $0.25.</p>
-      {!abierto ? (
+      {!activo ? (
+        <div style={{ marginTop: 18, padding: 14, borderRadius: 14, background: "var(--surface2)" }}>
+          <b style={{ fontSize: 14 }}><Ic n="lock" /> Tus ganancias se activan con {nf(SEGUIDORES_PARA_RETIRAR)} seguidores</b>
+          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Lo que ganas con tus fotos se va guardando. Cuando llegues a {nf(SEGUIDORES_PARA_RETIRAR)} seguidores podrás conectar tu banco y retirarlo.</p>
+          <div className="bar" style={{ margin: "12px 0 4px" }}><i style={{ width: `${Math.min(100, Math.round((seguidores / SEGUIDORES_PARA_RETIRAR) * 100))}%` }} /></div>
+          <p style={{ fontSize: 12, color: "var(--muted)" }}>{nf(seguidores)} de {nf(SEGUIDORES_PARA_RETIRAR)} · te faltan {nf(SEGUIDORES_PARA_RETIRAR - seguidores)}</p>
+        </div>
+      ) : !abierto ? (
         <div style={{ marginTop: 18, padding: 14, borderRadius: 14, border: "1.5px dashed var(--muted)" }}>
           <b style={{ fontSize: 14 }}>Conectar cuenta bancaria</b>
           <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Los retiros se abren muy pronto. Lo que ganas se guarda en tu saldo y te avisaremos para que conectes tu banco.</p>
