@@ -4,7 +4,7 @@ import { AvisoFasePrueba, Barra, Cargando, Corazones, TarjetaInvitar } from "../
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion, vidasAhora } from "../sesion";
-import { ADMINS, comisionRetiro, dinero, FASE_PRUEBA, fmtFalta, nf, RETIROS_ABIERTOS } from "../util";
+import { ADMINS, comisionRetiro, dinero, FASE_PRUEBA, fmtFalta, nf, RETIRO_MINIMO, RETIROS_ABIERTOS } from "../util";
 
 // Los paquetes reales se definen en el servidor (functions/src/pagos.ts). Aquí solo se muestran.
 // x = % de monedas extra por dólar respecto al paquete de 150 por $1.99 (redondeado hacia abajo).
@@ -130,7 +130,7 @@ export function Retiro() {
         <div className="line"><span style={{ color: "var(--muted)" }}>Comisión de envío</span><span style={{ color: "var(--rojo)" }}>−{dinero(com)}</span></div>
         <div className="line" style={{ borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 9 }}><b>Recibes</b><b style={{ color: "var(--verde)", fontSize: 16 }}>{dinero(Math.max(0, disp - com))}</b></div>
       </div>
-      <p style={{ fontSize: 12, color: "var(--muted)", margin: "8px 2px 0" }}>Mínimo para retirar: $50. Comisión: $2 + 0.25% + $0.25.</p>
+      <p style={{ fontSize: 12, color: "var(--muted)", margin: "8px 2px 0" }}>Mínimo para retirar: $15. Comisión: $2 + 0.25% + $0.25.</p>
       {!abierto ? (
         <div style={{ marginTop: 18, padding: 14, borderRadius: 14, border: "1.5px dashed var(--muted)" }}>
           <b style={{ fontSize: 14 }}>Conectar cuenta bancaria</b>
@@ -139,8 +139,8 @@ export function Retiro() {
       ) : !banco ? <Cargando /> : banco.lista ? (
         <>
           <p style={{ marginTop: 18, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}><span style={{ color: "var(--verde)" }}><Ic n="check" /></span> Cuenta bancaria conectada con Stripe</p>
-          <button className={`btn ${disp >= 50_000 && !ocupado ? "grad" : "off"}`} style={{ marginTop: 12 }} disabled={disp < 50_000 || ocupado} onClick={retirar}>
-            {ocupado ? "Enviando…" : disp >= 50_000 ? `Retirar ${dinero(Math.max(0, disp - com))}` : "Necesitas $50 para retirar"}
+          <button className={`btn ${disp >= RETIRO_MINIMO && !ocupado ? "grad" : "off"}`} style={{ marginTop: 12 }} disabled={disp < RETIRO_MINIMO || ocupado} onClick={retirar}>
+            {ocupado ? "Enviando…" : disp >= RETIRO_MINIMO ? `Retirar ${dinero(Math.max(0, disp - com))}` : "Necesitas $15 para retirar"}
           </button>
           <button style={{ display: "block", margin: "12px auto 0", fontSize: 13, fontWeight: 700, color: "var(--rosa)" }} onClick={conectar} disabled={ocupado}>Cambiar mis datos bancarios</button>
         </>

@@ -146,7 +146,7 @@ export async function retirar(clave: string, uid: string): Promise<{ enviado: nu
     const disp = (p.get("gananciasDisponibles") ?? 0) as number;
     const cuenta = p.get("stripeCuentaId") as string | null;
     if (!cuenta || p.get("stripeListo") !== true) fallo("sin-banco", "Primero conecta tu cuenta bancaria.");
-    if (disp < RETIRO_MINIMO_MILESIMAS) fallo("minimo", "El mínimo para retirar es $50.");
+    if (disp < RETIRO_MINIMO_MILESIMAS) fallo("minimo", "El mínimo para retirar es $15.");
     const comision = comisionRetiro(disp);
     const neto = Math.floor((disp - comision) / 10) * 10; // centavos enteros
     tx.update(ref, { gananciasDisponibles: FieldValue.increment(-disp) });

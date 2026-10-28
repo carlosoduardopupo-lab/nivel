@@ -34,6 +34,8 @@ export const INTERESES = ["Viajes", "Comida", "Autos", "Fitness", "Música", "Mo
 export const tiempoDe = (p: number) => Math.min(30, 10 + 5 * (p - 1));
 export const nf = (n: number) => n.toLocaleString("es");
 export const dinero = (milesimas: number) => "$" + (Math.floor(milesimas / 10) / 100).toFixed(2);
+/** Mínimo para retirar, en milésimas (también en functions/src/reglas.ts). */
+export const RETIRO_MINIMO = 15_000;
 export const comisionRetiro = (milesimas: number) => 2000 + Math.round(milesimas * 0.0025) + 250;
 export const monedasTxt = (n: number) => `${n} ${n === 1 ? "moneda" : "monedas"}`;
 
