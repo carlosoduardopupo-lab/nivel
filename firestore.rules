@@ -34,7 +34,11 @@ service cloud.firestore {
 
       match /desbloqueos/{postId} {
         allow read: if esYo(uid);
-        allow write: if false;
+        // El dueño solo puede quitarla de su colección (oculta = true); sigue desbloqueada.
+        allow update: if esYo(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['oculta'])
+          && request.resource.data.oculta == true;
+        allow create, delete: if false;
       }
       match /progreso/{creadorId} {
         allow read: if esYo(uid);
