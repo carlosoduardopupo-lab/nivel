@@ -4,7 +4,7 @@ import { AvisoFasePrueba, Barra, Cargando, Corazones, TarjetaInvitar } from "../
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion, vidasAhora } from "../sesion";
-import { ADMINS, comisionRetiro, dinero, FASE_PRUEBA, fmtFalta, nf } from "../util";
+import { ADMINS, comisionRetiro, dinero, FASE_PRUEBA, fmtFalta, nf, RETIROS_ABIERTOS } from "../util";
 
 // Los paquetes reales se definen en el servidor (functions/src/pagos.ts). Aquí solo se muestran.
 // x = % de monedas extra por dólar respecto al paquete de 150 por $1.99 (redondeado hacia abajo).
@@ -71,7 +71,6 @@ export function Tienda() {
       {FASE_PRUEBA && <AvisoFasePrueba />}
       {compraAbierta && (
         <>
-          {FASE_PRUEBA && <p style={{ textAlign: "center", fontSize: 12, color: "var(--muted)", marginTop: 12 }}>Modo prueba de Stripe (solo administradores): paga con la tarjeta 4242 4242 4242 4242, cualquier fecha futura y cualquier CVC.</p>}
           <div style={{ height: 70 }} />
           <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "12px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))", background: "var(--bg)" }}>
             <button className={`btn ${pagando ? "off" : "grad"}`} disabled={pagando} onClick={comprar}>{pagando ? "Abriendo el pago…" : `Comprar ${nf(k.m)} monedas · $${k.p.toFixed(2)}`}</button>
@@ -91,8 +90,8 @@ export function Retiro() {
   const { aviso } = useNav();
   const disp = privado?.gananciasDisponibles ?? 0;
   const com = disp ? comisionRetiro(disp) : 0;
-  // En fase de prueba solo los administradores prueban los retiros (con la clave de prueba de Stripe).
-  const abierto = !FASE_PRUEBA || (!!usuario && ADMINS.includes(usuario.uid));
+  // Hasta que los retiros se abran a todos, solo los administradores los prueban.
+  const abierto = RETIROS_ABIERTOS || (!!usuario && ADMINS.includes(usuario.uid));
   const [banco, setBanco] = useState<{ conectada: boolean; lista: boolean } | null>(null);
   const [pais, setPais] = useState("US");
   const [ocupado, setOcupado] = useState(false);
@@ -135,7 +134,7 @@ export function Retiro() {
       {!abierto ? (
         <div style={{ marginTop: 18, padding: 14, borderRadius: 14, border: "1.5px dashed var(--muted)" }}>
           <b style={{ fontSize: 14 }}>Conectar cuenta bancaria</b>
-          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Los retiros se abren cuando termine la fase de prueba.</p>
+          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Los retiros se abren muy pronto. Lo que ganas se guarda en tu saldo y te avisaremos para que conectes tu banco.</p>
         </div>
       ) : !banco ? <Cargando /> : banco.lista ? (
         <>

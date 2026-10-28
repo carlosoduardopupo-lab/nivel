@@ -218,7 +218,7 @@ function HojaBloqueados() {
 const PREGUNTAS_AYUDA: [string, string][] = [
   ["¿Cómo veo una foto borrosa?", "Toca la foto que toca jugar: aparece una pregunta sobre el creador con tres respuestas. Si aciertas antes de que acabe el tiempo, la foto es tuya. También puedes verla pagando con monedas."],
   ["Me quedé sin vidas", "Toca los corazones de arriba: puedes esperar a que vuelvan, invitar a un amigo (cuando juegue su primera foto, recuperas tus 3 vidas) o seguir con monedas."],
-  ["¿Las monedas son dinero?", "No. Estamos en fase de prueba: las monedas sirven para probar el sistema y no se pueden comprar ni retirar todavía. Te avisaremos cuando empiecen los pagos."],
+  ["¿Las monedas son dinero?", "No: son para jugar dentro de Blurry. Puedes comprarlas en la tienda y no se pueden cambiar por dinero. Los creadores sí ganan dinero real cuando alguien gasta monedas compradas en sus fotos."],
   ["¿Cómo publico?", "Toca + en el juego para subir una foto o video con tu pregunta, o + en Reels para subir un video gratis que invite a jugar."],
   ["Alguien me molesta", "Abre su perfil o su reel, toca ⋯ y elige Bloquear. Dejarás de ver su contenido y no podrá seguirte ni comentarte."],
   ["Vi algo que no debería estar", "Toca ⋯ en la foto o el reel y elige Reportar. Con 3 reportes se oculta hasta que lo revisemos."],

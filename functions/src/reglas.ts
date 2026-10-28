@@ -7,7 +7,7 @@ export const PREGUNTAS_POR_POST = 1;
 export const APROBACION_AUTOMATICA = true;
 // Fase de prueba: no hay compras ni retiros. Las monedas que se gastan en una foto se le
 // suman al creador (como monedas de regalo) para probar el sistema; no generan dinero.
-export const FASE_PRUEBA = true;
+export const FASE_PRUEBA = false;
 export const MARGEN_RESPUESTA_MS = 2000;
 
 export const PRECIO_MIN_FOTO = 1;
