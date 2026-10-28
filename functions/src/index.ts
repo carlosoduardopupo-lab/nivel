@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase-admin/app";
 import { setGlobalOptions } from "firebase-functions/v2";
+import { defineSecret } from "firebase-functions/params";
 import { HttpsError, onCall, onRequest, type CallableRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onObjectFinalized } from "firebase-functions/v2/storage";
@@ -9,6 +10,7 @@ import * as escaparate from "./escaparate.js";
 import * as estadisticas from "./estadisticas.js";
 import * as juego from "./juego.js";
 import * as notificaciones from "./notificaciones.js";
+import * as pagos from "./pagos.js";
 import * as publicaciones from "./publicaciones.js";
 import * as reels from "./reels.js";
 import * as seguridad from "./seguridad.js";
@@ -121,6 +123,14 @@ export const marcarLeidas = onCall((req) => notificaciones.marcarLeidas(uidDe(re
 export const avisarVidas = onSchedule({ schedule: "every 15 minutes", timeZone: "America/New_York" }, async () => {
   await notificaciones.avisarVidasDevueltas();
 });
+
+// Compra de monedas con Stripe (la clave secreta vive en Secret Manager: STRIPE_SECRET).
+const STRIPE_SECRET = defineSecret("STRIPE_SECRET");
+export const crearPago = onCall({ secrets: [STRIPE_SECRET] }, (req) => {
+  const d = datos(req);
+  return pagos.crearPago(STRIPE_SECRET.value(), uidDe(req), req.auth?.token.email ?? null, { paquete: d.paquete, origen: d.origen });
+});
+export const confirmarPagos = onCall({ secrets: [STRIPE_SECRET] }, (req) => pagos.confirmarPagos(STRIPE_SECRET.value(), uidDe(req)));
 
 // Estadísticas
 export const registrarVisita = onCall((req) => estadisticas.registrarVisita(uidDe(req)));

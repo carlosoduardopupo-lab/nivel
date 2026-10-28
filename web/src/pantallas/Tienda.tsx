@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api, errorDe } from "../api";
 import { AvisoFasePrueba, Barra, Corazones, TarjetaInvitar } from "../componentes";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion, vidasAhora } from "../sesion";
-import { comisionRetiro, dinero, FASE_PRUEBA, fmtFalta, nf } from "../util";
+import { ADMINS, comisionRetiro, dinero, FASE_PRUEBA, fmtFalta, nf } from "../util";
 
-// Los paquetes reales se definen en el servidor (Fase 3). Aquí solo se muestran.
+// Los paquetes reales se definen en el servidor (functions/src/pagos.ts). Aquí solo se muestran.
 // x = % de monedas extra por dólar respecto al paquete de 150 por $1.99 (redondeado hacia abajo).
 const PAQUETES = [
   { id: "p150", m: 150, p: 1.99, x: 0 },
@@ -15,9 +16,27 @@ const PAQUETES = [
 ];
 
 export function Tienda() {
-  const { privado } = useSesion();
+  const { privado, usuario } = useSesion();
   const { aviso } = useNav();
   const [sel, setSel] = useState(2);
+  const [pagando, setPagando] = useState(false);
+  // En fase de prueba solo compran los administradores (con la clave de prueba de Stripe).
+  const compraAbierta = !FASE_PRUEBA || (!!usuario && ADMINS.includes(usuario.uid));
+  // Al abrir la tienda (también al volver de Stripe) se suman las monedas de los pagos ya cobrados.
+  useEffect(() => {
+    if (!compraAbierta) return;
+    api.confirmarPagos({}).then((r) => { if (r.monedas) aviso(`¡Listo! +${nf(r.monedas)} monedas`); }, () => {});
+  }, [compraAbierta, aviso]);
+  async function comprar() {
+    setPagando(true);
+    try {
+      const { url } = await api.crearPago({ paquete: k.id, origen: location.origin });
+      location.href = url;
+    } catch (e) {
+      aviso(errorDe(e).mensaje);
+      setPagando(false);
+    }
+  }
   const vidas = vidasAhora(privado);
   const k = PAQUETES[sel];
   return (
@@ -49,11 +68,13 @@ export function Tienda() {
       </div>
       <TarjetaInvitar />
       <p style={{ textAlign: "center", fontSize: 12, color: "var(--muted)", marginTop: 16 }}><Ic n="lock" /> Pago seguro · Las monedas no caducan</p>
-      {FASE_PRUEBA ? <AvisoFasePrueba /> : (
+      {FASE_PRUEBA && <AvisoFasePrueba />}
+      {compraAbierta && (
         <>
+          {FASE_PRUEBA && <p style={{ textAlign: "center", fontSize: 12, color: "var(--muted)", marginTop: 12 }}>Modo prueba de Stripe (solo administradores): paga con la tarjeta 4242 4242 4242 4242, cualquier fecha futura y cualquier CVC.</p>}
           <div style={{ height: 70 }} />
           <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "12px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))", background: "var(--bg)" }}>
-            <button className="btn grad" onClick={() => aviso("La compra con Stripe llega en la Fase 3")}>Comprar {nf(k.m)} monedas · ${k.p.toFixed(2)}</button>
+            <button className={`btn ${pagando ? "off" : "grad"}`} disabled={pagando} onClick={comprar}>{pagando ? "Abriendo el pago…" : `Comprar ${nf(k.m)} monedas · $${k.p.toFixed(2)}`}</button>
           </div>
         </>
       )}

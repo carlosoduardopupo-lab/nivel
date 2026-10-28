@@ -28,6 +28,8 @@ export const api = {
   evento: llamar<{ tipo: "compartir" | "instalar" }, void>("evento"),
   registrarDispositivo: llamar<{ token: string }, void>("registrarDispositivo"),
   borrarDispositivo: llamar<{ token: string }, void>("borrarDispositivo"),
+  crearPago: llamar<{ paquete: string; origen: string }, { url: string }>("crearPago"),
+  confirmarPagos: llamar<Record<string, never>, { monedas: number }>("confirmarPagos"),
   marcarLeidas: llamar<Record<string, never>, void>("marcarLeidas"),
   bloquear: llamar<{ otroId: string; valor: boolean }, { bloqueado: boolean }>("bloquear"),
   reportarReel: llamar<{ reelId: string; motivo: string; detalle?: string }, void>("reportarReel"),
