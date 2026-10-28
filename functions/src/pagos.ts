@@ -57,8 +57,15 @@ export async function confirmarPagos(clave: string, uid: string): Promise<{ mone
   if (abiertos.empty) return { monedas: 0 };
   const api = stripe(clave, uid);
   let total = 0;
+  const modoPrueba = clave.includes("_test_");
   for (const pago of abiertos.docs) {
-    const s = await api.checkout.sessions.retrieve(pago.id);
+    // Un pago abierto con la otra clave (prueba ↔ real) no existe para esta: se salta.
+    if ((pago.get("prueba") === true) !== modoPrueba) continue;
+    const s = await api.checkout.sessions.retrieve(pago.id).catch((e: unknown) => {
+      logger.error("Stripe no pudo consultar el pago", pago.id, e instanceof Stripe.errors.StripeError ? e.message : e);
+      return null;
+    });
+    if (!s) continue;
     if (s.payment_status === "paid") {
       total += await db().runTransaction(async (tx) => {
         const actual = await tx.get(pago.ref);
