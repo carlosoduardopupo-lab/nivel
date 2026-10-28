@@ -197,6 +197,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "ganancias",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "liberado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "liberaEn",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": [

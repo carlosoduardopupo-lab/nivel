@@ -72,6 +72,11 @@ service cloud.firestore {
         allow read: if esYo(uid);
         allow write: if false;
       }
+      // Historial de retiros: lo lee el dueño; lo escribe Functions.
+      match /retiros/{id} {
+        allow read: if esYo(uid);
+        allow write: if false;
+      }
       // Avisos de la campana: los lee el dueño; los escribe Functions.
       match /notificaciones/{id} {
         allow read: if esYo(uid);

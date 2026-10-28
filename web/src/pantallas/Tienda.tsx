@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, errorDe } from "../api";
-import { AvisoFasePrueba, Barra, Corazones, TarjetaInvitar } from "../componentes";
+import { AvisoFasePrueba, Barra, Cargando, Corazones, TarjetaInvitar } from "../componentes";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion, vidasAhora } from "../sesion";
@@ -82,10 +82,42 @@ export function Tienda() {
   );
 }
 
+/** Países donde se puede cobrar (los mismos que PAISES_RETIRO en functions/src/pagos.ts). */
+const PAISES = [["US", "Estados Unidos"], ["MX", "México"], ["ES", "España"], ["CO", "Colombia"], ["AR", "Argentina"], ["CL", "Chile"], ["PE", "Perú"],
+  ["BR", "Brasil"], ["CA", "Canadá"], ["GB", "Reino Unido"], ["FR", "Francia"], ["IT", "Italia"], ["DE", "Alemania"], ["PT", "Portugal"]] as const;
+
 export function Retiro() {
-  const { privado } = useSesion();
+  const { privado, usuario } = useSesion();
+  const { aviso } = useNav();
   const disp = privado?.gananciasDisponibles ?? 0;
   const com = disp ? comisionRetiro(disp) : 0;
+  // En fase de prueba solo los administradores prueban los retiros (con la clave de prueba de Stripe).
+  const abierto = !FASE_PRUEBA || (!!usuario && ADMINS.includes(usuario.uid));
+  const [banco, setBanco] = useState<{ conectada: boolean; lista: boolean } | null>(null);
+  const [pais, setPais] = useState("US");
+  const [ocupado, setOcupado] = useState(false);
+  useEffect(() => {
+    if (abierto) api.estadoBanco({}).then(setBanco, () => setBanco({ conectada: false, lista: false }));
+  }, [abierto]);
+  async function conectar() {
+    setOcupado(true);
+    try {
+      location.href = (await api.conectarBanco({ pais, origen: location.origin })).url;
+    } catch (e) {
+      aviso(errorDe(e).mensaje);
+      setOcupado(false);
+    }
+  }
+  async function retirar() {
+    setOcupado(true);
+    try {
+      const r = await api.retirar({});
+      aviso(`Enviado: ${dinero(r.enviado)}. Llega a tu banco en unos días.`);
+    } catch (e) {
+      aviso(errorDe(e).mensaje);
+    }
+    setOcupado(false);
+  }
   return (
     <>
       <Barra titulo="Retirar ganancias" />
@@ -100,10 +132,39 @@ export function Retiro() {
         <div className="line" style={{ borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 9 }}><b>Recibes</b><b style={{ color: "var(--verde)", fontSize: 16 }}>{dinero(Math.max(0, disp - com))}</b></div>
       </div>
       <p style={{ fontSize: 12, color: "var(--muted)", margin: "8px 2px 0" }}>Mínimo para retirar: $50. Comisión: $2 + 0.25% + $0.25.</p>
-      <div style={{ marginTop: 18, padding: 14, borderRadius: 14, border: "1.5px dashed var(--muted)" }}>
-        <b style={{ fontSize: 14 }}>Conectar cuenta bancaria</b>
-        <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Los retiros con Stripe llegan en la Fase 4.</p>
-      </div>
+      {!abierto ? (
+        <div style={{ marginTop: 18, padding: 14, borderRadius: 14, border: "1.5px dashed var(--muted)" }}>
+          <b style={{ fontSize: 14 }}>Conectar cuenta bancaria</b>
+          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Los retiros se abren cuando termine la fase de prueba.</p>
+        </div>
+      ) : !banco ? <Cargando /> : banco.lista ? (
+        <>
+          <p style={{ marginTop: 18, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}><span style={{ color: "var(--verde)" }}><Ic n="check" /></span> Cuenta bancaria conectada con Stripe</p>
+          <button className={`btn ${disp >= 50_000 && !ocupado ? "grad" : "off"}`} style={{ marginTop: 12 }} disabled={disp < 50_000 || ocupado} onClick={retirar}>
+            {ocupado ? "Enviando…" : disp >= 50_000 ? `Retirar ${dinero(Math.max(0, disp - com))}` : "Necesitas $50 para retirar"}
+          </button>
+          <button style={{ display: "block", margin: "12px auto 0", fontSize: 13, fontWeight: 700, color: "var(--rosa)" }} onClick={conectar} disabled={ocupado}>Cambiar mis datos bancarios</button>
+        </>
+      ) : (
+        <div style={{ marginTop: 18, padding: 14, borderRadius: 14, background: "var(--surface2)" }}>
+          <b style={{ fontSize: 14 }}>{banco.conectada ? "Termina de conectar tu banco" : "Conecta tu cuenta bancaria"}</b>
+          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
+            {banco.conectada
+              ? "Stripe todavía necesita algunos datos tuyos para poder enviarte dinero."
+              : "Te llevamos a Stripe, que verifica tu identidad y guarda tu banco de forma segura. Blurry nunca ve tus datos bancarios."}
+          </p>
+          {!banco.conectada && (
+            <div className="field" style={{ marginTop: 12 }}>
+              <select value={pais} onChange={(e) => setPais(e.target.value)} aria-label="País de tu cuenta bancaria">
+                {PAISES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+              </select>
+            </div>
+          )}
+          <button className={`btn ${ocupado ? "off" : "grad"}`} style={{ marginTop: 12 }} disabled={ocupado} onClick={conectar}>
+            {ocupado ? "Abriendo Stripe…" : banco.conectada ? "Continuar en Stripe" : "Conectar con Stripe"}
+          </button>
+        </div>
+      )}
     </>
   );
 }

@@ -31,6 +31,7 @@ function EnlaceCompartido() {
       if (destino === "perfil") ir({ n: "perfil" });
       else if (destino === "reels") ir({ n: "reels" });
       else if (destino === "tienda") ir({ n: "tienda" }); // vuelta de la página de pago de Stripe
+      else if (destino === "retiro") ir({ n: "retiro" }); // vuelta de conectar el banco en Stripe
       return;
     }
     if (params.has("ref")) history.replaceState(null, "", location.pathname + (params.has("u") ? `?u=${encodeURIComponent(params.get("u")!)}` : ""));

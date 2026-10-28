@@ -131,6 +131,16 @@ export const crearPago = onCall({ secrets: [STRIPE_SECRET] }, (req) => {
   return pagos.crearPago(STRIPE_SECRET.value(), uidDe(req), req.auth?.token.email ?? null, { paquete: d.paquete, origen: d.origen });
 });
 export const confirmarPagos = onCall({ secrets: [STRIPE_SECRET] }, (req) => pagos.confirmarPagos(STRIPE_SECRET.value(), uidDe(req)));
+// Retiros de los creadores con Stripe Connect.
+export const conectarBanco = onCall({ secrets: [STRIPE_SECRET] }, (req) => {
+  const d = datos(req);
+  return pagos.conectarBanco(STRIPE_SECRET.value(), uidDe(req), req.auth?.token.email ?? null, { pais: d.pais, origen: d.origen });
+});
+export const estadoBanco = onCall({ secrets: [STRIPE_SECRET] }, (req) => pagos.estadoBanco(STRIPE_SECRET.value(), uidDe(req)));
+export const retirar = onCall({ secrets: [STRIPE_SECRET] }, (req) => pagos.retirar(STRIPE_SECRET.value(), uidDe(req)));
+export const liberarGanancias = onSchedule({ schedule: "every day 03:00", timeZone: "America/New_York" }, async () => {
+  await pagos.liberarGanancias();
+});
 
 // Estadísticas
 export const registrarVisita = onCall((req) => estadisticas.registrarVisita(uidDe(req)));
