@@ -24,7 +24,7 @@ export const CORREO_SOPORTE = "blurrysupport@gmail.com";
 // Fase de prueba (functions/src/reglas.ts): sin compras ni retiros; las monedas son para probar.
 export const FASE_PRUEBA = false;
 /** Retiros abiertos a todos: cuando Stripe Connect esté activo en la cuenta real. Hasta entonces solo los administradores. */
-export const RETIROS_ABIERTOS = false;
+export const RETIROS_ABIERTOS = true;
 
 // Referidos (functions/src/reglas.ts): cada amigo nuevo = 3 vidas; al tercero, 500 monedas.
 export const REF_AMIGOS = 3;
