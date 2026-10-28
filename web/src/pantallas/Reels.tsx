@@ -135,7 +135,11 @@ function TarjetaReel({ reel, sonido, alSonido, alEliminar, alEditar }: {
     if (!v) return;
     if (visible) {
       v.currentTime = 0;
-      v.play().then(() => setPausado(false), () => setPausado(true));
+      // iPhone no deja reproducir solo con sonido sin un toque: si lo rechaza, arranca en silencio.
+      v.play().then(() => setPausado(false), () => {
+        v.muted = true;
+        v.play().then(() => setPausado(false), () => setPausado(true));
+      });
     } else v.pause();
   }, [visible, src]);
 

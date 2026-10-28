@@ -17,10 +17,43 @@ function edad(fecha: string): number | null {
   if (!m) return null;
   const A = +m[1], M = +m[2], D = +m[3];
   if (A < 1900) return null;
+  const f = new Date(A, M - 1, D);
+  if (f.getMonth() !== M - 1 || f.getDate() !== D) return null; // p. ej. 31 de febrero
   const t = new Date();
   let e = t.getFullYear() - A;
   if (t < new Date(t.getFullYear(), M - 1, D)) e--;
   return e;
+}
+
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** Día, mes y año en tres desplegables: el selector de fecha nativo no funciona bien en iPhone. Devuelve "AAAA-MM-DD" o "". */
+function SelectorFecha({ valor, cambiar }: { valor: string; cambiar: (v: string) => void }) {
+  const [a0, m0, d0] = valor ? valor.split("-") : ["", "", ""];
+  const [p, setP] = useState({ d: d0 ? String(+d0) : "", m: m0 ? String(+m0) : "", a: a0 });
+  const hoy = new Date().getFullYear();
+  const dias = p.m ? new Date(+p.a || 2000, +p.m, 0).getDate() : 31;
+  function poner(k: "d" | "m" | "a", v: string) {
+    const n = { ...p, [k]: v };
+    setP(n);
+    cambiar(n.d && n.m && n.a ? `${n.a}-${n.m.padStart(2, "0")}-${n.d.padStart(2, "0")}` : "");
+  }
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1.2fr", gap: 8 }}>
+      <div className="field"><select aria-label="Día de nacimiento" value={p.d} onChange={(e) => poner("d", e.target.value)}>
+        <option value="" disabled>Día</option>
+        {Array.from({ length: dias }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+      </select></div>
+      <div className="field"><select aria-label="Mes de nacimiento" value={p.m} onChange={(e) => poner("m", e.target.value)}>
+        <option value="" disabled>Mes</option>
+        {MESES.map((m, i) => <option key={m} value={i + 1}>{m[0].toUpperCase() + m.slice(1)}</option>)}
+      </select></div>
+      <div className="field"><select aria-label="Año de nacimiento" value={p.a} onChange={(e) => poner("a", e.target.value)}>
+        <option value="" disabled>Año</option>
+        {Array.from({ length: hoy - 1900 + 1 }, (_, i) => hoy - i).map((a) => <option key={a} value={a}>{a}</option>)}
+      </select></div>
+    </div>
+  );
 }
 
 const mensajeAuth = (e: unknown) => {
@@ -203,9 +236,7 @@ export function Registro({ alTerminar }: { alTerminar: (cuentaNueva: boolean) =>
             <p className="lbl">Nombre real</p>
             <div className="field"><input placeholder="Nombre y apellido" aria-label="Nombre real" value={d.name} onChange={(x) => set("name", x.target.value)} autoComplete="name" /></div>
             <p className="lbl">Fecha de nacimiento</p>
-            <div className="field">
-              <input type="date" aria-label="Fecha de nacimiento" min="1900-01-01" max={new Date().toISOString().slice(0, 10)} style={{ colorScheme: "dark" }} value={d.fecha} onChange={(x) => set("fecha", x.target.value)} />
-            </div>
+            <SelectorFecha valor={d.fecha} cambiar={(v) => set("fecha", v)} />
             <p style={{ fontSize: 12, margin: "8px 2px 0", color: e === null ? "var(--muted)" : e < 18 ? "var(--rojo)" : "var(--verde)" }}>
               {e === null ? "Debes tener 18 años o más." : e < 18 ? "Lo sentimos, debes tener 18 años o más para usar la app." : "Edad confirmada"}
             </p>
