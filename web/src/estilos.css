@@ -44,7 +44,11 @@ p{margin:0}
 .sub{font-size:14px;color:var(--muted);margin-top:6px}
 .field{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:12px;padding:0 12px;min-height:48px;border:1.5px solid transparent}
 .field:focus-within{border-color:var(--fg)}
-.field input{all:unset;flex:1;min-width:0;font-size:15px;color:var(--fg)}
+.field input{all:unset;flex:1;min-width:0;font-size:16px;color:var(--fg)}
+.field select{appearance:none;-webkit-appearance:none;background:transparent;border:0;outline:0;flex:1;min-width:0;height:46px;font:inherit;font-size:16px;color:var(--fg);
+  padding-right:18px;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 9px) 50%,calc(100% - 4px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+.field select:invalid,.field select option[value=""]{color:var(--muted)}
 textarea.field{display:block;width:100%;padding:12px;min-height:76px;resize:none;outline:none;line-height:1.4}
 ::placeholder{color:var(--muted);opacity:.85}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;background:var(--surface2);color:var(--fg);white-space:nowrap}
@@ -177,3 +181,8 @@ textarea.field{display:block;width:100%;padding:12px;min-height:76px;resize:none
 .stats-tabla th,.stats-tabla td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
 .stats-tabla th{color:var(--muted);font-weight:600;white-space:normal;min-width:70px;vertical-align:bottom}
 .stats-tabla th:first-child,.stats-tabla td:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
+
+/* iPhone: los campos con letra de menos de 16 px hacen zoom al tocarlos; solo afecta a Safari en iOS. */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select { font-size: 16px !important; }
+}

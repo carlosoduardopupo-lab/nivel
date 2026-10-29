@@ -23,6 +23,7 @@ export function Crear() {
   const [error, setError] = useState<string | null>(null);
   const [progreso, setProgreso] = useState<number | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const camara = useRef<HTMLInputElement>(null);
 
   const min = tipo === "video" ? 3 : 1;
   const max = perfil?.esVip ? 100 : 20;
@@ -114,16 +115,25 @@ export function Crear() {
             <button className="pill" style={{ position: "absolute", left: 10, bottom: 10, background: "rgba(20,14,18,.65)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); setBorroso(!borroso); }}>
               <Ic n="eye" /> {borroso ? "Ver nítida" : "Ver como jugador"}
             </button>
-            <button className="pill" style={{ position: "absolute", right: 10, bottom: 10, background: "rgba(20,14,18,.65)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); input.current?.click(); }}>Cambiar</button>
+            <div style={{ position: "absolute", right: 10, bottom: 10, display: "flex", gap: 6 }}>
+              <button className="pill" style={{ background: "rgba(20,14,18,.65)", color: "#fff" }} aria-label="Usar la cámara" onClick={(e) => { e.stopPropagation(); camara.current?.click(); }}><Ic n="camera" /></button>
+              <button className="pill" style={{ background: "rgba(20,14,18,.65)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); input.current?.click(); }}>Cambiar</button>
+            </div>
           </>
         ) : (
           <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, textAlign: "center" }}>
             <span style={{ width: 56, height: 56, borderRadius: 16, background: "var(--grad)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 26 }}><Ic n={tipo === "video" ? "video" : "photo"} /></span>
             <b>Seleccionar {tipo}</b>
             <span style={{ fontSize: 12, color: "var(--muted)" }}>Una a la vez{tipo === "video" ? " · máx. 30 segundos" : ""}</span>
+            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+              <button className="pill" onClick={(e) => { e.stopPropagation(); input.current?.click(); }}><Ic n="photo" /> Galería</button>
+              <button className="pill" onClick={(e) => { e.stopPropagation(); camara.current?.click(); }}><Ic n="camera" /> {tipo === "video" ? "Grabar" : "Cámara"}</button>
+            </div>
           </div>
         )}
         <input ref={input} type="file" accept={tipo === "foto" ? "image/*" : "video/*"} hidden onChange={(e) => { elegir(e.target.files?.[0]); e.target.value = ""; }} />
+        {/* capture abre directamente la cámara trasera en el móvil (en el ordenador, el selector normal). */}
+        <input ref={camara} type="file" accept={tipo === "foto" ? "image/*" : "video/*"} capture="environment" hidden onChange={(e) => { elegir(e.target.files?.[0]); e.target.value = ""; }} />
       </div>
 
       {qs.map((q, i) => (

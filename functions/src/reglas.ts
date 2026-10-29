@@ -7,7 +7,7 @@ export const PREGUNTAS_POR_POST = 1;
 export const APROBACION_AUTOMATICA = true;
 // Fase de prueba: no hay compras ni retiros. Las monedas que se gastan en una foto se le
 // suman al creador (como monedas de regalo) para probar el sistema; no generan dinero.
-export const FASE_PRUEBA = true;
+export const FASE_PRUEBA = false;
 export const MARGEN_RESPUESTA_MS = 2000;
 
 export const PRECIO_MIN_FOTO = 1;
@@ -29,7 +29,9 @@ export const MONEDAS_BIENVENIDA = 100;
 export const MONEDAS_POR_REFERIDO = [0, 0, 500];
 export const MAX_MONEDAS_REFERIDOS = 500;
 export const DIAS_EN_ESPERA = 7;
-export const RETIRO_MINIMO_MILESIMAS = 50_000;
+export const RETIRO_MINIMO_MILESIMAS = 15_000;
+// Las ganancias se acumulan siempre, pero solo se pueden retirar con este número de seguidores.
+export const SEGUIDORES_PARA_RETIRAR = 1000;
 
 export const MIN_DESBLOQUEOS_PARA_PORCENTAJE = 20;
 

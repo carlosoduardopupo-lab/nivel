@@ -21,9 +21,10 @@ service cloud.firestore {
     // ---------- Perfil público ----------
     match /users/{uid} {
       allow read: if registrado();
-      // El dueño solo puede cambiar su avatar y sus intereses.
+      // El dueño solo puede cambiar su avatar, sus intereses y el modo incógnito.
       allow update: if esYo(uid)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl', 'intereses'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl', 'intereses', 'incognito'])
+        && (!('incognito' in request.resource.data) || request.resource.data.incognito is bool)
         && (!('intereses' in request.resource.data)
             || (request.resource.data.intereses is list && request.resource.data.intereses.size() <= 10))
         && (!('avatarUrl' in request.resource.data)
@@ -33,7 +34,11 @@ service cloud.firestore {
 
       match /desbloqueos/{postId} {
         allow read: if esYo(uid);
-        allow write: if false;
+        // El dueño solo puede quitarla de su colección (oculta = true); sigue desbloqueada.
+        allow update: if esYo(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['oculta'])
+          && request.resource.data.oculta == true;
+        allow create, delete: if false;
       }
       match /progreso/{creadorId} {
         allow read: if esYo(uid);
@@ -64,6 +69,11 @@ service cloud.firestore {
       allow write: if false;
 
       match /ganancias/{id} {
+        allow read: if esYo(uid);
+        allow write: if false;
+      }
+      // Historial de retiros: lo lee el dueño; lo escribe Functions.
+      match /retiros/{id} {
         allow read: if esYo(uid);
         allow write: if false;
       }

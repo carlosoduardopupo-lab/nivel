@@ -44,10 +44,10 @@
     "public": "hosting-juego",
     "ignore": ["firebase.json", "**/node_modules/**"],
     "redirects": [
-      { "source": "/download", "destination": "https://blurry-78f0d.web.app/descargar/", "type": 302 },
-      { "source": "/descargar", "destination": "https://blurry-78f0d.web.app/descargar/", "type": 302 },
-      { "source": "/", "destination": "https://blurry-78f0d.web.app/descargar/", "type": 302 },
-      { "source": "/app", "destination": "https://blurry-78f0d.web.app/", "type": 302 }
+      { "source": "/download", "destination": "https://playblurry.com/download", "type": 302 },
+      { "source": "/descargar", "destination": "https://playblurry.com/download", "type": 302 },
+      { "source": "/", "destination": "https://playblurry.com/download", "type": 302 },
+      { "source": "/app", "destination": "https://playblurry.com/", "type": 302 }
     ]
   }
   ],

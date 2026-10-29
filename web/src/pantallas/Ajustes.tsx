@@ -17,12 +17,23 @@ export function Ajustes() {
   const { perfil, privado, usuario, bloqueados } = useSesion();
   const { ir, abrirHoja, cerrarHoja, aviso } = useNav();
   // escaparate: activado salvo que el creador lo haya desactivado (las cuentas antiguas no lo tienen).
-  const [sw, setSw] = useState<Record<string, boolean>>({ escaparate: true, ...privado?.ajustes });
-  useEffect(() => { if (privado?.ajustes) setSw(privado.ajustes); }, [privado?.ajustes]);
+  const [sw, setSw] = useState<Record<string, boolean>>({ escaparate: true, ...privado?.ajustes, incognito: perfil?.incognito === true });
+  useEffect(() => { if (privado?.ajustes) setSw((s) => ({ ...s, ...privado.ajustes })); }, [privado?.ajustes]);
 
   async function alternar(k: string) {
     const nuevo = { ...sw, [k]: !sw[k] };
     setSw(nuevo);
+    // El modo incógnito es público (lo usan las listas para ocultar el perfil): va en users/{uid}.
+    if (k === "incognito") {
+      try {
+        await updateDoc(doc(db, "users", auth.currentUser!.uid), { incognito: nuevo[k] });
+        aviso(nuevo[k] ? "Modo incógnito activado" : "Modo incógnito desactivado");
+      } catch (e) {
+        setSw(sw);
+        aviso(errorDe(e).mensaje);
+      }
+      return;
+    }
     try {
       await api.guardarAjustes({ ajustes: { [k]: nuevo[k] } });
     } catch (e) {
@@ -50,6 +61,7 @@ export function Ajustes() {
     ["Privacidad", [
       { i: "msg", t: "Permitir comentarios", s: "Solo quien desbloqueó la foto", sw: "comentar" },
       { i: "spark", t: "Aparecer en \"Para ti\"", s: "Te sugerimos a otros jugadores", sw: "sugeridos" },
+      { i: "ban", t: "Modo incógnito", s: "Tu perfil no sale en el feed, Reels ni la web; solo te encuentran buscándote", sw: "incognito" },
       { i: "eye", t: "Aparecer en la web de Blurry", s: "Si estás entre los populares, tu tarjeta (foto de perfil) sale en la página de descarga", sw: "escaparate" },
       { i: "ban", t: "Cuentas bloqueadas", s: bloqueados.size ? `${bloqueados.size}` : "Ninguna", accion: () => abrirHoja(<HojaBloqueados />) },
     ]],
@@ -167,7 +179,7 @@ const REGLAS: [string, string][] = [
   ["Tiempo según el precio", "10 segundos con 1 moneda y 5 más por cada moneda extra, hasta 30."],
   ["Ver respuesta", "El botón con el precio siempre está disponible: pagas y la foto es tuya."],
   ["Precios", "De 1 a 20 monedas por foto (videos desde 3). Los creadores VIP pueden cobrar hasta 100."],
-  ["Creadores", "Reciben $0.005 por cada moneda gastada en sus publicaciones. Retiro mínimo de $50."],
+  ["Creadores", "Reciben $0.005 por cada moneda gastada en sus publicaciones. Pueden retirar a partir de 1.000 seguidores, con un mínimo de $15."],
 ];
 
 export function HojaReglas() {
@@ -206,7 +218,7 @@ function HojaBloqueados() {
 const PREGUNTAS_AYUDA: [string, string][] = [
   ["¿Cómo veo una foto borrosa?", "Toca la foto que toca jugar: aparece una pregunta sobre el creador con tres respuestas. Si aciertas antes de que acabe el tiempo, la foto es tuya. También puedes verla pagando con monedas."],
   ["Me quedé sin vidas", "Toca los corazones de arriba: puedes esperar a que vuelvan, invitar a un amigo (cuando juegue su primera foto, recuperas tus 3 vidas) o seguir con monedas."],
-  ["¿Las monedas son dinero?", "No. Estamos en fase de prueba: las monedas sirven para probar el sistema y no se pueden comprar ni retirar todavía. Te avisaremos cuando empiecen los pagos."],
+  ["¿Las monedas son dinero?", "No: son para jugar dentro de Blurry. Puedes comprarlas en la tienda y no se pueden cambiar por dinero. Los creadores sí ganan dinero real cuando alguien gasta monedas compradas en sus fotos."],
   ["¿Cómo publico?", "Toca + en el juego para subir una foto o video con tu pregunta, o + en Reels para subir un video gratis que invite a jugar."],
   ["Alguien me molesta", "Abre su perfil o su reel, toca ⋯ y elige Bloquear. Dejarás de ver su contenido y no podrá seguirte ni comentarte."],
   ["Vi algo que no debería estar", "Toca ⋯ en la foto o el reel y elige Reportar. Con 3 reportes se oculta hasta que lo revisemos."],

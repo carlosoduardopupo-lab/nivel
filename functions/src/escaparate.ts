@@ -23,6 +23,7 @@ export async function populares(): Promise<TarjetaPublica[]> {
   const tarjetas: TarjetaPublica[] = [];
   for (const u of users.docs) {
     if ((u.get("numPublicaciones") ?? 0) < 1) continue;
+    if (u.get("incognito") === true) continue; // modo incógnito: no sale fuera del buscador
     if ((await db().doc(`private/${u.id}`).get()).get("ajustes.escaparate") === false) continue;
     tarjetas.push({
       username: u.get("username"),

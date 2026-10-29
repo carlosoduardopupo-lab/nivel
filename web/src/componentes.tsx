@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { collection, doc, getDoc, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { api, errorDe } from "./api";
 import { art } from "./arte";
@@ -48,11 +49,35 @@ export function Arte({ tema = "chica", fondo = "#F2ECEF" }: { tema?: string; fon
   return <div style={{ width: "100%", height: "100%" }} dangerouslySetInnerHTML={{ __html: art(tema, fondo) }} />;
 }
 
-export function Avatar({ url, tam, borde }: { url: string | null | undefined; tam: number; borde?: string }) {
+export function Avatar({ url, tam, borde, ampliable = false }: { url: string | null | undefined; tam: number; borde?: string; ampliable?: boolean }) {
+  const [grande, setGrande] = useState(false);
+  const puede = ampliable && !!url;
   return (
-    <div className="ava" style={{ width: tam, height: tam, border: borde, background: "var(--surface2)" }}>
-      {url ? <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Arte fondo="#FAC775" />}
-    </div>
+    <>
+      <div className="ava" style={{ width: tam, height: tam, border: borde, background: "var(--surface2)", cursor: puede ? "zoom-in" : undefined }}
+        {...(puede ? { role: "button", tabIndex: 0, "aria-label": "Ver foto de perfil", onClick: () => setGrande(true), onKeyDown: (e: React.KeyboardEvent) => e.key === "Enter" && setGrande(true) } : {})}>
+        {url ? <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Arte fondo="#FAC775" />}
+      </div>
+      {grande && url && <VisorFoto url={url} cerrar={() => setGrande(false)} />}
+    </>
+  );
+}
+
+/** Foto a pantalla completa sobre todo; se cierra tocando, con la X o con Escape. */
+function VisorFoto({ url, cerrar }: { url: string; cerrar: () => void }) {
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => e.key === "Escape" && cerrar();
+    addEventListener("keydown", tecla);
+    return () => removeEventListener("keydown", tecla);
+  }, [cerrar]);
+  return createPortal(
+    <div role="dialog" aria-label="Foto de perfil" onClick={cerrar}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.94)", display: "flex", alignItems: "center", justifyContent: "center", animation: "pop .2s ease" }}>
+      <img src={url} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+      <button className="iconbtn" aria-label="Cerrar" onClick={cerrar}
+        style={{ position: "absolute", top: "calc(env(safe-area-inset-top) + 12px)", right: 12, color: "#fff", background: "rgba(255,255,255,.14)", borderRadius: "50%" }}><Ic n="x" /></button>
+    </div>,
+    document.body,
   );
 }
 
@@ -85,9 +110,12 @@ export function TituloHoja({ children }: { children: ReactNode }) {
 /**
  * Fotos a pantalla completa. Con varias, se pasa de una a otra deslizando,
  * con las flechas de la pantalla o con las del teclado. Se cierra tocando la
- * foto, con la ✕ o con Escape.
+ * foto, con la ✕ o con Escape. Las rutas de `videos` se reproducen con controles;
+ * `etiqueta` pinta algo encima de cada foto (p. ej. de quién es).
  */
-export function PantallaCompleta({ rutas, inicio = 0, alCerrar }: { rutas: string[]; inicio?: number; alCerrar: () => void }) {
+export function PantallaCompleta({ rutas, inicio = 0, alCerrar, videos, etiqueta }: {
+  rutas: string[]; inicio?: number; alCerrar: () => void; videos?: Set<string>; etiqueta?: (i: number) => ReactNode;
+}) {
   const [i, setI] = useState(Math.min(Math.max(inicio, 0), rutas.length - 1));
   const toque = useRef<{ x: number; y: number } | null>(null);
   const deslizado = useRef(false);
@@ -107,8 +135,10 @@ export function PantallaCompleta({ rutas, inicio = 0, alCerrar }: { rutas: strin
       <Ic n={icono} />
     </button>
   );
-  return (
-    <div role="dialog" aria-label="Foto a pantalla completa" style={{ position: "fixed", inset: 0, zIndex: 50, background: "#000", cursor: "zoom-out", touchAction: "pan-y" }}
+  const video = videos?.has(rutas[i]) ?? false;
+  // En un portal: dentro de una hoja, `position: fixed` quedaría encerrado en ella.
+  return createPortal(
+    <div role="dialog" aria-label="Foto a pantalla completa" style={{ position: "fixed", inset: 0, zIndex: 1000, background: "#000", cursor: "zoom-out", touchAction: "pan-y" }}
       onPointerDown={(e) => { toque.current = { x: e.clientX, y: e.clientY }; deslizado.current = false; }}
       onPointerUp={(e) => {
         const t = toque.current;
@@ -118,12 +148,16 @@ export function PantallaCompleta({ rutas, inicio = 0, alCerrar }: { rutas: strin
         if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(e.clientY - t.y)) { deslizado.current = true; ir(dx < 0 ? 1 : -1); }
       }}
       onClick={() => { if (!deslizado.current) alCerrar(); }}>
-      <ImagenStorage ruta={rutas[i]} contener />
+      {video
+        ? <div style={{ width: "100%", height: "100%" }} onClick={(e) => e.stopPropagation()}><ImagenStorage key={rutas[i]} ruta={rutas[i]} video controles contener /></div>
+        : <ImagenStorage ruta={rutas[i]} contener />}
+      {etiqueta && <div style={{ position: "absolute", top: "calc(12px + env(safe-area-inset-top,0px))", left: 12 }} onClick={(e) => e.stopPropagation()}>{etiqueta(i)}</div>}
       {i > 0 && flecha(-1, "back", "left")}
       {i < rutas.length - 1 && flecha(1, "next", "right")}
       {rutas.length > 1 && <span style={{ position: "absolute", left: "50%", bottom: "calc(16px + env(safe-area-inset-bottom,0px))", transform: "translateX(-50%)", color: "#fff", fontSize: 13, fontWeight: 600, background: "rgba(255,255,255,.14)", padding: "4px 10px", borderRadius: 999 }}>{i + 1} / {rutas.length}</span>}
       <button className="iconbtn" aria-label="Cerrar" onClick={(e) => { e.stopPropagation(); alCerrar(); }} style={{ position: "absolute", top: "calc(12px + env(safe-area-inset-top,0px))", right: 12, background: "rgba(255,255,255,.14)", color: "#fff", borderRadius: "50%" }}><Ic n="x" /></button>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

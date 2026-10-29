@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { AvisoFasePrueba, Barra, Corazones, TarjetaInvitar } from "../componentes";
+import { useEffect, useState } from "react";
+import { api, errorDe } from "../api";
+import { AvisoFasePrueba, Barra, Cargando, Corazones, TarjetaInvitar } from "../componentes";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion, vidasAhora } from "../sesion";
-import { comisionRetiro, dinero, FASE_PRUEBA, fmtFalta, nf } from "../util";
+import { ADMINS, comisionRetiro, dinero, FASE_PRUEBA, fmtFalta, nf, RETIRO_MINIMO, RETIROS_ABIERTOS, SEGUIDORES_PARA_RETIRAR } from "../util";
 
-// Los paquetes reales se definen en el servidor (Fase 3). Aquí solo se muestran.
+// Los paquetes reales se definen en el servidor (functions/src/pagos.ts). Aquí solo se muestran.
 // x = % de monedas extra por dólar respecto al paquete de 150 por $1.99 (redondeado hacia abajo).
 const PAQUETES = [
   { id: "p150", m: 150, p: 1.99, x: 0 },
@@ -15,9 +16,27 @@ const PAQUETES = [
 ];
 
 export function Tienda() {
-  const { privado } = useSesion();
+  const { privado, usuario } = useSesion();
   const { aviso } = useNav();
   const [sel, setSel] = useState(2);
+  const [pagando, setPagando] = useState(false);
+  // En fase de prueba solo compran los administradores (con la clave de prueba de Stripe).
+  const compraAbierta = !FASE_PRUEBA || (!!usuario && ADMINS.includes(usuario.uid));
+  // Al abrir la tienda (también al volver de Stripe) se suman las monedas de los pagos ya cobrados.
+  useEffect(() => {
+    if (!compraAbierta) return;
+    api.confirmarPagos({}).then((r) => { if (r.monedas) aviso(`¡Listo! +${nf(r.monedas)} monedas`); }, () => {});
+  }, [compraAbierta, aviso]);
+  async function comprar() {
+    setPagando(true);
+    try {
+      const { url } = await api.crearPago({ paquete: k.id, origen: location.origin });
+      location.href = url;
+    } catch (e) {
+      aviso(errorDe(e).mensaje);
+      setPagando(false);
+    }
+  }
   const vidas = vidasAhora(privado);
   const k = PAQUETES[sel];
   return (
@@ -49,11 +68,12 @@ export function Tienda() {
       </div>
       <TarjetaInvitar />
       <p style={{ textAlign: "center", fontSize: 12, color: "var(--muted)", marginTop: 16 }}><Ic n="lock" /> Pago seguro · Las monedas no caducan</p>
-      {FASE_PRUEBA ? <AvisoFasePrueba /> : (
+      {FASE_PRUEBA && <AvisoFasePrueba />}
+      {compraAbierta && (
         <>
           <div style={{ height: 70 }} />
           <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "12px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))", background: "var(--bg)" }}>
-            <button className="btn grad" onClick={() => aviso("La compra con Stripe llega en la Fase 3")}>Comprar {nf(k.m)} monedas · ${k.p.toFixed(2)}</button>
+            <button className={`btn ${pagando ? "off" : "grad"}`} disabled={pagando} onClick={comprar}>{pagando ? "Abriendo el pago…" : `Comprar ${nf(k.m)} monedas · $${k.p.toFixed(2)}`}</button>
           </div>
         </>
       )}
@@ -61,10 +81,45 @@ export function Tienda() {
   );
 }
 
+/** Países donde se puede cobrar (los mismos que PAISES_RETIRO en functions/src/pagos.ts). */
+const PAISES = [["US", "Estados Unidos"], ["MX", "México"], ["ES", "España"], ["CO", "Colombia"], ["AR", "Argentina"], ["CL", "Chile"], ["PE", "Perú"],
+  ["BR", "Brasil"], ["CA", "Canadá"], ["GB", "Reino Unido"], ["FR", "Francia"], ["IT", "Italia"], ["DE", "Alemania"], ["PT", "Portugal"]] as const;
+
 export function Retiro() {
-  const { privado } = useSesion();
+  const { privado, usuario, perfil } = useSesion();
+  const { aviso } = useNav();
   const disp = privado?.gananciasDisponibles ?? 0;
+  const seguidores = perfil?.seguidores ?? 0;
   const com = disp ? comisionRetiro(disp) : 0;
+  // Hasta que los retiros se abran a todos, solo los administradores los prueban.
+  const abierto = RETIROS_ABIERTOS || (!!usuario && ADMINS.includes(usuario.uid));
+  // Lo ganado se acumula siempre; se puede retirar a partir de SEGUIDORES_PARA_RETIRAR.
+  const activo = seguidores >= SEGUIDORES_PARA_RETIRAR;
+  const [banco, setBanco] = useState<{ conectada: boolean; lista: boolean } | null>(null);
+  const [pais, setPais] = useState("US");
+  const [ocupado, setOcupado] = useState(false);
+  useEffect(() => {
+    if (abierto) api.estadoBanco({}).then(setBanco, () => setBanco({ conectada: false, lista: false }));
+  }, [abierto]);
+  async function conectar() {
+    setOcupado(true);
+    try {
+      location.href = (await api.conectarBanco({ pais, origen: location.origin })).url;
+    } catch (e) {
+      aviso(errorDe(e).mensaje);
+      setOcupado(false);
+    }
+  }
+  async function retirar() {
+    setOcupado(true);
+    try {
+      const r = await api.retirar({});
+      aviso(`Enviado: ${dinero(r.enviado)}. Llega a tu banco en unos días.`);
+    } catch (e) {
+      aviso(errorDe(e).mensaje);
+    }
+    setOcupado(false);
+  }
   return (
     <>
       <Barra titulo="Retirar ganancias" />
@@ -78,11 +133,47 @@ export function Retiro() {
         <div className="line"><span style={{ color: "var(--muted)" }}>Comisión de envío</span><span style={{ color: "var(--rojo)" }}>−{dinero(com)}</span></div>
         <div className="line" style={{ borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 9 }}><b>Recibes</b><b style={{ color: "var(--verde)", fontSize: 16 }}>{dinero(Math.max(0, disp - com))}</b></div>
       </div>
-      <p style={{ fontSize: 12, color: "var(--muted)", margin: "8px 2px 0" }}>Mínimo para retirar: $50. Comisión: $2 + 0.25% + $0.25.</p>
-      <div style={{ marginTop: 18, padding: 14, borderRadius: 14, border: "1.5px dashed var(--muted)" }}>
-        <b style={{ fontSize: 14 }}>Conectar cuenta bancaria</b>
-        <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Los retiros con Stripe llegan en la Fase 4.</p>
-      </div>
+      <p style={{ fontSize: 12, color: "var(--muted)", margin: "8px 2px 0" }}>Mínimo para retirar: $15. Comisión: $2 + 0.25% + $0.25.</p>
+      {!activo ? (
+        <div style={{ marginTop: 18, padding: 14, borderRadius: 14, background: "var(--surface2)" }}>
+          <b style={{ fontSize: 14 }}><Ic n="lock" /> Tus ganancias se activan con {nf(SEGUIDORES_PARA_RETIRAR)} seguidores</b>
+          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Lo que ganas con tus fotos se va guardando. Cuando llegues a {nf(SEGUIDORES_PARA_RETIRAR)} seguidores podrás conectar tu banco y retirarlo.</p>
+          <div className="bar" style={{ margin: "12px 0 4px" }}><i style={{ width: `${Math.min(100, Math.round((seguidores / SEGUIDORES_PARA_RETIRAR) * 100))}%` }} /></div>
+          <p style={{ fontSize: 12, color: "var(--muted)" }}>{nf(seguidores)} de {nf(SEGUIDORES_PARA_RETIRAR)} · te faltan {nf(SEGUIDORES_PARA_RETIRAR - seguidores)}</p>
+        </div>
+      ) : !abierto ? (
+        <div style={{ marginTop: 18, padding: 14, borderRadius: 14, border: "1.5px dashed var(--muted)" }}>
+          <b style={{ fontSize: 14 }}>Conectar cuenta bancaria</b>
+          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Los retiros se abren muy pronto. Lo que ganas se guarda en tu saldo y te avisaremos para que conectes tu banco.</p>
+        </div>
+      ) : !banco ? <Cargando /> : banco.lista ? (
+        <>
+          <p style={{ marginTop: 18, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}><span style={{ color: "var(--verde)" }}><Ic n="check" /></span> Cuenta bancaria conectada con Stripe</p>
+          <button className={`btn ${disp >= RETIRO_MINIMO && !ocupado ? "grad" : "off"}`} style={{ marginTop: 12 }} disabled={disp < RETIRO_MINIMO || ocupado} onClick={retirar}>
+            {ocupado ? "Enviando…" : disp >= RETIRO_MINIMO ? `Retirar ${dinero(Math.max(0, disp - com))}` : "Necesitas $15 para retirar"}
+          </button>
+          <button style={{ display: "block", margin: "12px auto 0", fontSize: 13, fontWeight: 700, color: "var(--rosa)" }} onClick={conectar} disabled={ocupado}>Cambiar mis datos bancarios</button>
+        </>
+      ) : (
+        <div style={{ marginTop: 18, padding: 14, borderRadius: 14, background: "var(--surface2)" }}>
+          <b style={{ fontSize: 14 }}>{banco.conectada ? "Termina de conectar tu banco" : "Conecta tu cuenta bancaria"}</b>
+          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
+            {banco.conectada
+              ? "Stripe todavía necesita algunos datos tuyos para poder enviarte dinero."
+              : "Te llevamos a Stripe, que verifica tu identidad y guarda tu banco de forma segura. Blurry nunca ve tus datos bancarios."}
+          </p>
+          {!banco.conectada && (
+            <div className="field" style={{ marginTop: 12 }}>
+              <select value={pais} onChange={(e) => setPais(e.target.value)} aria-label="País de tu cuenta bancaria">
+                {PAISES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+              </select>
+            </div>
+          )}
+          <button className={`btn ${ocupado ? "off" : "grad"}`} style={{ marginTop: 12 }} disabled={ocupado} onClick={conectar}>
+            {ocupado ? "Abriendo Stripe…" : banco.conectada ? "Continuar en Stripe" : "Conectar con Stripe"}
+          </button>
+        </div>
+      )}
     </>
   );
 }

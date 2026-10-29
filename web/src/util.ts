@@ -22,7 +22,9 @@ export const ADMINS = ["y4KUHbYPChSM2QFa7VMoAyX3a952"]; // @carli
 export const CORREO_SOPORTE = "blurrysupport@gmail.com";
 
 // Fase de prueba (functions/src/reglas.ts): sin compras ni retiros; las monedas son para probar.
-export const FASE_PRUEBA = true;
+export const FASE_PRUEBA = false;
+/** Retiros abiertos a todos: cuando Stripe Connect esté activo en la cuenta real. Hasta entonces solo los administradores. */
+export const RETIROS_ABIERTOS = true;
 
 // Referidos (functions/src/reglas.ts): cada amigo nuevo = 3 vidas; al tercero, 500 monedas.
 export const REF_AMIGOS = 3;
@@ -32,6 +34,10 @@ export const INTERESES = ["Viajes", "Comida", "Autos", "Fitness", "Música", "Mo
 export const tiempoDe = (p: number) => Math.min(30, 10 + 5 * (p - 1));
 export const nf = (n: number) => n.toLocaleString("es");
 export const dinero = (milesimas: number) => "$" + (Math.floor(milesimas / 10) / 100).toFixed(2);
+/** Mínimo para retirar, en milésimas (también en functions/src/reglas.ts). */
+export const RETIRO_MINIMO = 15_000;
+/** Seguidores necesarios para retirar; antes, lo ganado se acumula (también en functions/src/reglas.ts). */
+export const SEGUIDORES_PARA_RETIRAR = 1000;
 export const comisionRetiro = (milesimas: number) => 2000 + Math.round(milesimas * 0.0025) + 250;
 export const monedasTxt = (n: number) => `${n} ${n === 1 ? "moneda" : "monedas"}`;
 

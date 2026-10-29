@@ -10,7 +10,7 @@ import { useSesion } from "../sesion";
 import { duracionVideo, nf } from "../util";
 
 export type Reel = { id: string; autorId: string; texto: string; estado: string; rutaVideo: string | null; rutaPortada: string | null; meGusta: number; comentarios?: number };
-type Autor = { username: string; avatarUrl: string | null };
+type Autor = { username: string; avatarUrl: string | null; incognito: boolean };
 
 const MAX_SEGUNDOS = 60;
 const MAX_TEXTO = 150;
@@ -23,7 +23,7 @@ const urlDe = (ruta: string) => {
 };
 const autores = new Map<string, Promise<Autor>>();
 const autorDe = (id: string) => {
-  if (!autores.has(id)) autores.set(id, getDoc(doc(db, "users", id)).then((u) => ({ username: u.get("username") ?? "usuario", avatarUrl: u.get("avatarUrl") ?? null })));
+  if (!autores.has(id)) autores.set(id, getDoc(doc(db, "users", id)).then((u) => ({ username: u.get("username") ?? "usuario", avatarUrl: u.get("avatarUrl") ?? null, incognito: u.get("incognito") === true })));
   return autores.get(id)!;
 };
 
@@ -48,6 +48,15 @@ export function Reels({ autorId, reelId }: { autorId?: string; reelId?: string }
       () => setLista([]),
     );
   }, [autorId]);
+
+  // Reels de autores en modo incógnito: no salen en la sección general (sí desde su perfil).
+  const [ocultos, setOcultos] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (autorId || !lista?.length) return;
+    const ids = [...new Set(lista.map((r) => r.autorId))];
+    Promise.all(ids.map((id) => autorDe(id).then((a) => (a.incognito && id !== auth.currentUser?.uid ? id : null), () => null)))
+      .then((r) => setOcultos(new Set(r.filter((x): x is string => !!x))));
+  }, [lista, autorId]);
 
   // Si se abrió desde un reel concreto, empieza en él.
   useEffect(() => {
@@ -76,7 +85,7 @@ export function Reels({ autorId, reelId }: { autorId?: string; reelId?: string }
             <p className="h2" style={{ color: "#fff", marginTop: 12 }}>{autorId ? "Aún no hay reels aquí" : "Aún no hay reels"}</p>
             <p style={{ opacity: 0.75, fontSize: 14, marginTop: 6 }}>Sube un video gratis y cuenta qué hay detrás de tus fotos borrosas. Toca + para crear el primero.</p>
           </div>
-        ) : lista.filter((r) => !bloqueados.has(r.autorId)).map((r) => (
+        ) : lista.filter((r) => !bloqueados.has(r.autorId) && !ocultos.has(r.autorId)).map((r) => (
           <TarjetaReel key={r.id} reel={r} sonido={sonido} alSonido={() => setSonido((s) => !s)} alEliminar={() => quitar(r.id)} alEditar={cambiar} />
         ))}
       </div>
@@ -126,7 +135,11 @@ function TarjetaReel({ reel, sonido, alSonido, alEliminar, alEditar }: {
     if (!v) return;
     if (visible) {
       v.currentTime = 0;
-      v.play().then(() => setPausado(false), () => setPausado(true));
+      // iPhone no deja reproducir solo con sonido sin un toque: si lo rechaza, arranca en silencio.
+      v.play().then(() => setPausado(false), () => {
+        v.muted = true;
+        v.play().then(() => setPausado(false), () => setPausado(true));
+      });
     } else v.pause();
   }, [visible, src]);
 

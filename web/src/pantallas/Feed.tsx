@@ -21,6 +21,7 @@ export type Creador = {
   porcentajeFallos: number;
   numPublicaciones: number;
   precioPromedio?: number | null;
+  incognito?: boolean;
   creadoEn?: { toMillis(): number };
 };
 
@@ -111,7 +112,8 @@ export function Feed() {
     cargar(filtro, perfil.intereses ?? [], siguiendo).then(
       (r) => {
         if (!vivo) return;
-        let l = r.filter((c) => c.id !== uid && c.numPublicaciones > 0 && !bloqueados.has(c.id));
+        // Modo incógnito: solo se ven en "Siguiendo" (quien ya los sigue) y en el buscador.
+        let l = r.filter((c) => c.id !== uid && c.numPublicaciones > 0 && !bloqueados.has(c.id) && (filtro === "Siguiendo" || !c.incognito));
         // "Siguiendo" solo muestra a quien tiene fotos nuevas por jugar.
         if (filtro === "Siguiendo") l = l.filter((c) => c.numPublicaciones > (progreso[c.id] ?? 0));
         setCreadores(l);

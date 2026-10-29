@@ -61,6 +61,10 @@ Estas reglas mandan sobre todo el proyecto. Si el código y este archivo no coin
 - Solo las ve el administrador (`ADMINS` en `web/src/util.ts` y en `firestore.rules`): Ajustes → Administración → Estadísticas de uso, o `npm run estadisticas -- --nube`.
 - No guardan datos personales: solo cuántas veces pasa cada cosa al día.
 
+## Modo incógnito
+- Interruptor en Ajustes → Privacidad (campo público `users/{uid}.incognito`). Con él activado el perfil no aparece en Nuevos, Populares ni Para ti, sus reels no salen en la sección Reels y su tarjeta no sale en el escaparate público.
+- Sí aparece en el buscador, en "Siguiendo" para quien ya le sigue y desde su perfil (incluidos sus reels). Juega, publica y comenta con normalidad.
+
 ## Seguridad y cuenta
 - **Bloquear**: desde el perfil de alguien (⋯) o un reel. Quien bloquea deja de ver sus fotos, reels, comentarios y en la búsqueda; se rompen los seguimientos en los dos sentidos y el bloqueado no puede seguirle ni comentar en sus fotos o reels. No se avisa. Se deshace en Ajustes → Cuentas bloqueadas.
 - **Reportar reels**: como las fotos (inapropiado, menor, robado, otro); con 3 reportes de personas distintas el reel se oculta hasta revisarlo (`npm run moderar -- reels`).

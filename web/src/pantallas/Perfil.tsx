@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, updateDoc, where } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { api, errorDe, type PreguntaNueva } from "../api";
-import { AvisoFasePrueba, Avatar, Cargando, Corazones, HiloComentarios, HojaCompartir, ImagenStorage, TituloHoja } from "../componentes";
+import { AvisoFasePrueba, Avatar, Cargando, Corazones, HiloComentarios, HojaCompartir, ImagenStorage, PantallaCompleta, TituloHoja } from "../componentes";
 import { auth, db, storage } from "../firebase";
 import { Ic } from "../iconos";
 import { useNav } from "../nav";
 import { useSesion } from "../sesion";
-import { dinero, FASE_PRUEBA, nf, reducirImagen } from "../util";
+import { dinero, FASE_PRUEBA, nf, reducirImagen, SEGUIDORES_PARA_RETIRAR } from "../util";
 import { HojaEditarReel, type Reel } from "./Reels";
 
 type MiPost = {
@@ -38,7 +38,7 @@ export function Perfil() {
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, paddingTop: 6 }}>
-        <Avatar url={perfil.avatarUrl} tam={88} />
+        <Avatar url={perfil.avatarUrl} tam={88} ampliable />
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontFamily: "var(--f-display)", fontWeight: 700, fontSize: 18 }}>@{perfil.username}</span>
           <button className="iconbtn" style={{ width: 30, height: 30, color: "var(--muted)" }} onClick={() => abrirHoja(<EditarPerfil />)} aria-label="Editar nombre de usuario y foto"><Ic n="pencil" /></button>
@@ -57,7 +57,8 @@ export function Perfil() {
             <div style={{ flex: 1 }}><small>GANADAS CON TUS FOTOS</small><div className="num" style={{ color: "#6FD6AE" }}><span style={{ color: "var(--oro)" }}><Ic n="coin" /></span>{nf(privado.monedasGanadas ?? 0)}</div></div>
           ) : (
             <div style={{ flex: 1 }}><small>GANANCIAS</small><div className="num" style={{ color: "#6FD6AE" }}>{dinero(privado.gananciasDisponibles)}</div>
-              {privado.gananciasEnEspera > 0 && <p style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>+{dinero(privado.gananciasEnEspera)} en espera</p>}</div>
+              {privado.gananciasEnEspera > 0 && <p style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>+{dinero(privado.gananciasEnEspera)} en espera</p>}
+              {perfil.seguidores < SEGUIDORES_PARA_RETIRAR && <p style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}><Ic n="lock" /> Se activan con {nf(SEGUIDORES_PARA_RETIRAR)} seguidores</p>}</div>
           )}
         </div>
         {FASE_PRUEBA ? <AvisoFasePrueba oscuro /> : (
@@ -112,15 +113,19 @@ function DetallePost({ post, alEliminar }: { post: MiPost; alEliminar: () => voi
   const [ocupado, setOcupado] = useState(false);
   const [preguntas, setPreguntas] = useState<{ texto: string; respuesta: string; falsas: string[]; autor: string }[] | null>(null);
   const [editando, setEditando] = useState(false);
+  const [ampliada, setAmpliada] = useState(false);
   useEffect(() => { api.misPreguntas({ postId: post.id }).then((r) => setPreguntas(r.preguntas), () => setPreguntas([])); }, [post.id]);
   const aciertan = post.intentos ? Math.round(((post.intentos - post.fallos) / post.intentos) * 100) : 0;
   const ganado = (post.monedasGastadas ?? 0) * 5;
   return (
     <>
       {/* La foto (o el video) a tamaño real, entera; la información va debajo. */}
-      <div style={{ width: "100%", height: "min(62vh, 520px)", borderRadius: 16, overflow: "hidden", background: "#000", marginBottom: 14 }}>
+      {/* Tocar la foto la abre a pantalla completa (el video ya tiene su botón de pantalla completa). */}
+      <div style={{ width: "100%", height: "min(62vh, 520px)", borderRadius: 16, overflow: "hidden", background: "#000", marginBottom: 14, cursor: post.tipo === "foto" ? "zoom-in" : undefined }}
+        onClick={() => post.tipo === "foto" && post.rutaOriginal && setAmpliada(true)}>
         {post.rutaOriginal && post.estado !== "subiendo" ? <ImagenStorage ruta={post.rutaOriginal} video={post.tipo === "video"} controles={post.tipo === "video"} contener /> : null}
       </div>
+      {ampliada && post.rutaOriginal && <PantallaCompleta rutas={[post.rutaOriginal]} alCerrar={() => setAmpliada(false)} />}
       <div style={{ marginBottom: 16 }}>
         <div>
           <p style={{ fontFamily: "var(--f-display)", fontWeight: 700, fontSize: 17 }}>{post.tipo === "video" ? "Video" : "Foto"}</p>
@@ -288,36 +293,70 @@ function MisReels({ uid }: { uid: string }) {
 }
 
 function Coleccion({ uid }: { uid: string }) {
-  const { ir, abrirHoja } = useNav();
+  const { ir, aviso } = useNav();
+  const [ampliada, setAmpliada] = useState<number | null>(null);
+  const [confirmar, setConfirmar] = useState(false);
   const [items, setItems] = useState<{ postId: string; creadorId: string; ruta: string | null; usuario: string; eliminada: boolean; video: boolean; original: string | null }[] | null>(null);
   useEffect(() => {
     (async () => {
       const s = await getDocs(query(collection(db, "users", uid, "desbloqueos"), orderBy("creadoEn", "desc")));
       const nombres = new Map<string, string>();
-      const lista = await Promise.all(s.docs.map(async (d) => {
+      const lista = await Promise.all(s.docs.filter((d) => d.get("oculta") !== true).map(async (d) => {
         const creadorId = d.get("creadorId") as string;
         if (!nombres.has(creadorId)) nombres.set(creadorId, (await getDoc(doc(db, "users", creadorId))).get("username") ?? "");
         const p = await getDoc(doc(db, "posts", d.id)).catch(() => null);
         return { postId: d.id, creadorId, ruta: p?.exists() ? (p.get("tipo") === "video" ? p.get("rutaBorrosa") : p.get("rutaOriginal")) : null, usuario: nombres.get(creadorId)!, eliminada: p?.get("estado") === "eliminada", video: p?.get("tipo") === "video", original: p?.exists() ? p.get("rutaOriginal") : null };
       }));
-      setItems(lista.filter((x) => x.ruta));
+      setItems(lista.filter((x) => x.ruta && x.original));
     })();
   }, [uid]);
+  // Borrar de la colección solo la oculta aquí: sigue desbloqueada en el perfil del creador.
+  async function borrar(i: number) {
+    const x = items![i];
+    try {
+      await updateDoc(doc(db, "users", uid, "desbloqueos", x.postId), { oculta: true });
+      const resto = items!.filter((_, n) => n !== i);
+      setItems(resto);
+      setConfirmar(false);
+      setAmpliada(resto.length ? Math.min(i, resto.length - 1) : null);
+      aviso(x.video ? "Video borrado de tu colección" : "Foto borrada de tu colección");
+    } catch (e) {
+      aviso(errorDe(e).mensaje);
+    }
+  }
   if (!items) return <Cargando />;
   if (!items.length) return <p className="sub" style={{ textAlign: "center", padding: "40px 0" }}>Aún no desbloqueas fotos.</p>;
   return (
     <>
       <p className="sub" style={{ margin: "0 2px 10px" }}>Fotos que desbloqueaste, jugando o pagando.</p>
       <div className="grid3">
-        {items.map((x) => (
-          <button key={x.postId} className="cell" aria-label={`Foto de @${x.usuario}`} onClick={() => x.eliminada
-            ? abrirHoja(<div className="stage"><ImagenStorage ruta={x.original} video={x.video} controles /></div>)
-            : ir({ n: "creador", id: x.creadorId, postId: x.postId })}>
+        {items.map((x, i) => (
+          <button key={x.postId} className="cell" aria-label={`Foto de @${x.usuario}`} onClick={() => setAmpliada(i)}>
             <ImagenStorage ruta={x.ruta} />
+            {x.video && <span className="c" style={{ top: 6, right: 6 }}><Ic n="play" lleno /></span>}
             <span className="c" style={{ left: 6, bottom: 6 }}>@{x.usuario}</span>
           </button>
         ))}
       </div>
+      {ampliada !== null && (
+        <PantallaCompleta key={items.length} rutas={items.map((x) => x.original!)} inicio={ampliada} alCerrar={() => { setAmpliada(null); setConfirmar(false); }}
+          videos={new Set(items.filter((x) => x.video).map((x) => x.original!))}
+          etiqueta={(i) => {
+            const x = items[i];
+            const pildora = { color: "#fff", fontWeight: 700, fontSize: 14, background: "rgba(255,255,255,.14)", padding: "7px 12px", borderRadius: 999 };
+            return (
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <button style={pildora} onClick={() => x.eliminada ? undefined : ir({ n: "creador", id: x.creadorId, postId: x.postId })}>@{x.usuario}{x.eliminada ? "" : " ›"}</button>
+                {confirmar ? (
+                  <>
+                    <button style={{ ...pildora, background: "var(--rojo)" }} onClick={() => borrar(i)}>Borrar de mi colección</button>
+                    <button style={pildora} onClick={() => setConfirmar(false)}>Cancelar</button>
+                  </>
+                ) : <button style={pildora} aria-label="Borrar de mi colección" onClick={() => setConfirmar(true)}><Ic n="trash" /> Borrar</button>}
+              </div>
+            );
+          }} />
+      )}
     </>
   );
 }
@@ -341,7 +380,7 @@ function Seguidos({ uid }: { uid: string }) {
     <>
       {lista.map((c) => (
         <div className="lrow" key={c.id}>
-          <Avatar url={c.avatarUrl} tam={46} />
+          <Avatar url={c.avatarUrl} tam={46} ampliable />
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontWeight: 700, fontSize: 14 }}>@{c.username}</p>
             <div className="bar" style={{ margin: "6px 0 3px" }}><i style={{ width: `${c.tot ? Math.round((c.hechas / c.tot) * 100) : 0}%` }} /></div>

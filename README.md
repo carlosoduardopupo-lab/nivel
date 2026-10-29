@@ -80,8 +80,8 @@ Nada se despliega sin confirmación.
 ## App de Android (APK)
 Página de descarga: https://blurry-78f0d.web.app/descargar (`web/public/descargar/index.html`, HTML suelto). Detecta Android (APK + instalar desde el navegador), iPhone (pasos para añadir a inicio) y ordenador. Admite `?ref=usuario` y lo pasa a la app. Las fotos son de Unsplash (licencia libre, enlazadas).
 
-`android/` es una Trusted Web Activity (generada con Bubblewrap): abre https://blurry-78f0d.web.app como app.
-El APK se publica en https://blurry-78f0d.web.app/blurry.apk y Android lo verifica con `web/public/.well-known/assetlinks.json`.
+`android/` es una Trusted Web Activity (generada con Bubblewrap): abre https://playblurry.com como app (versión 2; la 1 abría blurry-78f0d.web.app).
+El APK se publica en https://playblurry.com/blurry.apk y Android lo verifica con `web/public/.well-known/assetlinks.json`.
 
 **La firma** está en `android/blurry.keystore` y su contraseña en `android/clave-firma.local`. Ninguno se sube a git:
 guárdalos en un lugar seguro. Sin ellos no se puede publicar una actualización de la app.
